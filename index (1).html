@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoring Kualitas Udara</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; text-align: center; background: #f8f9fb; color: #333; }
+    h1 { margin-top: 40px; font-size: 2em; color: #444; }
+    .card { display: inline-block; padding: 20px 40px; background: #fff; border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-top: 20px; text-align: left; }
+    p { font-size: 18px; margin: 6px 0; }
+    span { font-weight: bold; color: #222; }
+  </style>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+      authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
+      databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "monitoring-kualitas-udar-8ad9d",
+      storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    const historiRef = ref(db, "IAQ/Histori");
+    onValue(historiRef, (snapshot) => {
+      const data = snapshot.val();
+      if (!data) return;
+
+      const timestamps = Object.keys(data);
+      const latestKey = timestamps[timestamps.length - 1];
+      const latestData = data[latestKey];
+
+      document.getElementById("suhu").innerText = latestData.suhu + " °C";
+      document.getElementById("kelembaban").innerText = latestData.kelembaban + " %";
+      document.getElementById("co2").innerText = latestData.CO2 + " ppm";
+      document.getElementById("pm25").innerText = latestData.PM25 + " µg/m³";
+      document.getElementById("pm10").innerText = latestData.PM10 + " µg/m³";
+      document.getElementById("status").innerText = latestData.status;
+    });
+  </script>
+</head>
+<body>
+  <h1>📊 Monitoring Kualitas Udara</h1>
+  <div class="card">
+    <p>Suhu: <span id="suhu">-</span></p>
+    <p>Kelembaban: <span id="kelembaban">-</span></p>
+    <p>CO₂: <span id="co2">-</span></p>
+    <p>PM2.5: <span id="pm25">-</span></p>
+    <p>PM10: <span id="pm10">-</span></p>
+    <p>Status Udara: <span id="status">-</span></p>
+  </div>
+</body>
+</html>
