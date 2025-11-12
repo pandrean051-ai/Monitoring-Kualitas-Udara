@@ -1,43 +1,68 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Monitoring Kualitas Udara</title>
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+# 🌤️ Monitoring Kualitas Udara (ESP32 + Firebase)
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-      authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
-      databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
-      projectId: "monitoring-kualitas-udar-8ad9d",
-      storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
-      messagingSenderId: "1234567890",
-      appId: "1:1234567890:web:abcdef123456"
-    };
+Proyek ini memantau suhu, kelembaban, partikel debu, dan kadar CO₂ secara real-time menggunakan ESP32 dan Firebase.  
+Data dari sensor dikirim ke **Firebase Realtime Database**, lalu ditampilkan secara langsung di halaman web.
 
-    const app = initializeApp(firebaseConfig);
-    const db = getDatabase(app);
+---
 
-    const latestRef = ref(db, "IAQ/Histori");
+## 🚀 Fitur
+- Monitoring suhu, kelembaban, partikel, dan CO₂ real-time  
+- Dashboard web interaktif (HTML + JS + Firebase SDK v11)
+- Data otomatis diperbarui tanpa reload halaman  
+- Integrasi dengan ESP32
 
-    onValue(latestRef, (snapshot) => {
-      const data = snapshot.val();
-      const keys = Object.keys(data);
-      const latest = data[keys[keys.length - 1]];
+---
 
-      document.getElementById("suhu").innerText = latest.suhu + " °C";
-      document.getElementById("kelembaban").innerText = latest.kelembaban + " %";
-      document.getElementById("co2").innerText = latest.CO2 + " ppm";
-      document.getElementById("status").innerText = latest.status;
-    });
-  </script>
-</head>
-<body style="font-family:sans-serif; text-align:center; background:#eef2f3; color:#222;">
-  <h1>📊 Monitoring Kualitas Udara</h1>
-  <p><strong>Suhu:</strong> <span id="suhu">Memuat...</span></p>
-  <p><strong>Kelembaban:</strong> <span id="kelembaban">Memuat...</span></p>
-  <p><strong>CO₂:</strong> <span id="co2">Memuat...</span></p>
-  <p><strong>Status Udara:</strong> <span id="status">Memuat...</span></p>
-</body>
-</html>
+## ⚙️ Struktur Firebase
+Data disimpan di path berikut:
+```
+IAQ/
+ └── Histori/
+      └── 2025-11-12_11:33:47/
+           ├── suhu: 25.6
+           ├── kelembaban: 59.5
+           ├── Partikel: 0.48
+           ├── CO2: 3.75
+           └── status: "Buruk"
+```
+
+---
+
+## 🧩 File Penting
+| File | Fungsi |
+|------|---------|
+| `index.html` | Dashboard untuk menampilkan data dari Firebase |
+| `README.md` | Dokumentasi proyek |
+| `esp32_code.ino` | Program mikrokontroler untuk kirim data |
+
+---
+
+## 🔧 Cara Menjalankan
+1. **Buka file `index.html`** di browser.  
+2. Pastikan Firebase sudah diatur seperti berikut di dalam file:
+   ```js
+   const latestRef = ref(db, "IAQ/Histori");
+   ```
+3. Pastikan nama variabel data cocok dengan Firebase:
+   ```js
+   latest.CO2
+   latest.Partikel
+   latest.suhu
+   latest.kelembaban
+   ```
+4. Jika data `undefined`, cek di Realtime Database apakah huruf besar–kecil sama persis.
+
+---
+
+## 📷 Contoh Tampilan
+(Tambahkan tangkapan layar di sini)
+
+---
+
+## 👨‍💻 Pengembang
+Dibuat oleh **Andrean** — Monitoring IoT Kualitas Udara (2025)
+
+---
+
+## 🧠 Lisensi
+Open Source Project — silakan gunakan untuk penelitian dan pembelajaran.
