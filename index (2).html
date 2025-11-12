@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoring Kualitas Udara</title>
+  <style>
+    body {
+      background-color: #0f0e2e;
+      color: #f1f1f1;
+      font-family: "Segoe UI", sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+
+    h1 {
+      color: #7b74f2;
+      margin-bottom: 10px;
+    }
+
+    .card {
+      background-color: #1c1846;
+      border-radius: 15px;
+      padding: 20px;
+      margin: 15px auto;
+      width: 320px;
+      box-shadow: 0px 0px 15px rgba(0, 0, 0, 0.4);
+    }
+
+    .status {
+      font-size: 1.5em;
+      font-weight: bold;
+      color: #00ffff;
+      border-bottom: 2px solid #4e4c8a;
+      padding-bottom: 8px;
+      margin-bottom: 15px;
+    }
+
+    .item {
+      margin: 10px 0;
+      font-size: 1.1em;
+    }
+
+    .footer {
+      font-size: 0.9em;
+      color: #a0a0a0;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📊 Monitoring Kualitas Udara</h1>
+
+  <div class="card">
+    <div class="status" id="status">Memuat...</div>
+    <div class="item">🌡️ Suhu: <span id="suhu">-</span></div>
+    <div class="item">💧 Kelembaban: <span id="kelembaban">-</span></div>
+    <div class="item">🌫️ Partikel: <span id="debu">-</span></div>
+    <div class="item">🧪 CO₂: <span id="co2">-</span></div>
+    <div class="item">⏰ Waktu: <span id="waktu">-</span></div>
+  </div>
+
+  <div class="footer">Data realtime dari Firebase Realtime Database</div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+    import { getDatabase, ref, onValue, query, limitToLast } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "API_KEY_KAMU",
+      authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
+      databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "monitoring-kualitas-udar-8ad9d",
+      storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const dataRef = query(ref(db, "IAQ"), limitToLast(1));
+
+    onValue(dataRef, (snapshot) => {
+      snapshot.forEach((child) => {
+        const data = child.val();
+        document.getElementById("suhu").textContent = data.suhu + " °C";
+        document.getElementById("kelembaban").textContent = data.kelembaban + " %";
+        document.getElementById("debu").textContent = data.Partikel + " mg/m³";
+        document.getElementById("co2").textContent = data["MQ-135"] + " ppm";
+        document.getElementById("status").textContent = data.status;
+        document.getElementById("waktu").textContent = data.waktu;
+      });
+    });
+  </script>
+</body>
+</html>
