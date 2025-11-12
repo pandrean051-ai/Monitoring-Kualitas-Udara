@@ -1,53 +1,68 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoring Kualitas Udara</title>
+  <script type="module">
+    // Import Firebase SDK
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-# 🌤️ Monitoring Kualitas Udara
+    // Konfigurasi Firebase (ganti dengan punyamu)
+    const firebaseConfig = {
+      apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+      authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
+      databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "monitoring-kualitas-udar-8ad9d",
+      storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdefgh123456"
+    };
 
-Proyek ini bertujuan untuk **memantau kualitas udara secara real-time** menggunakan sensor berbasis **ESP32 / ESP8266** yang terhubung ke **Firebase Realtime Database**.  
-Data yang dikirimkan mencakup suhu, kelembaban, CO₂, partikel debu (PM2.5 & PM10), serta status kualitas udara.  
-Hasil monitoring ditampilkan secara langsung melalui halaman web menggunakan **GitHub Pages**.
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
 
----
+    // Referensi data
+    const iaqRef = ref(db, "IAQ");
 
-## 🔧 Fitur
-- Menampilkan data suhu dan kelembaban secara real-time  
-- Menampilkan kadar CO₂ (ppm)  
-- Menampilkan konsentrasi partikel PM2.5 dan PM10  
-- Status udara otomatis berubah berdasarkan kualitas udara  
-- Tampilan web responsif dan ringan  
-- Dapat diakses melalui GitHub Pages
-
----
-
-## 🧠 Arsitektur Sistem
-
-**Perangkat keras:**
-- ESP32 / ESP8266  
-- Sensor MQ-135 (CO₂)  
-- Sensor DHT11 / DHT22 (Suhu & Kelembaban)  
-- Sensor SDS011 / PMS5003 (PM2.5 & PM10)  
-
-**Perangkat lunak:**
-- Arduino IDE  
-- Firebase Realtime Database  
-- HTML + JavaScript (Firebase SDK 11.x)  
-- GitHub Pages untuk menampilkan data
-
----
-
-## 📁 Struktur Database di Firebase
-
-```bash
-IAQ/
- ├── suhu: 25.6
- ├── kelembaban: 61.7
- ├── CO2: 420
- ├── PM25: 12
- ├── PM10: 20
- ├── status: "Baik"
- └── Histori/
-      ├── 2025-11-12_10-44-30/
-      │     ├── suhu: 25.6
-      │     ├── kelembaban: 61.7
-      │     ├── CO2: 420
-      │     ├── PM25: 12
-      │     ├── PM10: 20
-      │     └── status: "Baik"
+    // Ambil data real-time
+    onValue(iaqRef, (snapshot) => {
+      const data = snapshot.val();
+      document.getElementById("suhu").innerText = data.suhu + " °C";
+      document.getElementById("kelembaban").innerText = data.kelembaban + " %";
+      document.getElementById("debu").innerText = data.debu + " mg/m³";
+      document.getElementById("co2").innerText = data.CO2 + " ppm";
+      document.getElementById("status").innerText = data.status;
+      document.getElementById("waktu").innerText = data.waktu;
+    });
+  </script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b132b;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+    .card {
+      background: #1c2541;
+      border-radius: 12px;
+      padding: 20px;
+      margin: 10px auto;
+      width: 300px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    }
+    h2 { color: #5bc0be; }
+  </style>
+</head>
+<body>
+  <h1>📊 Monitoring Kualitas Udara</h1>
+  <div class="card"><h2 id="status">Loading...</h2></div>
+  <div class="card">Suhu: <span id="suhu">--</span></div>
+  <div class="card">Kelembaban: <span id="kelembaban">--</span></div>
+  <div class="card">Debu: <span id="debu">--</span></div>
+  <div class="card">CO₂: <span id="co2">--</span></div>
+  <div class="card">Waktu: <span id="waktu">--</span></div>
+</body>
+</html>
