@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Monitoring Kualitas Udara</title>
+  <script type="module">
+    // === Import Firebase SDK ===
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+    import { getDatabase, ref, query, limitToLast, onValue } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
+
+    // === Konfigurasi Firebase ===
+    const firebaseConfig = {
+      apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+      authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
+      databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "monitoring-kualitas-udar-8ad9d",
+      storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+      messagingSenderId: "1234567890",
+      appId: "1:1234567890:web:abcdef123456"
+    };
+
+    // === Inisialisasi Firebase ===
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // === Baca data terakhir dari IAQ/Histori ===
+    const historiRef = query(ref(db, "IAQ/Histori"), limitToLast(1));
+
+    onValue(historiRef, (snapshot) => {
+      snapshot.forEach((childSnapshot) => {
+        const data = childSnapshot.val();
+        document.getElementById("suhu").innerText = (data.suhu || "-") + " °C";
+        document.getElementById("kelembaban").innerText = (data.kelembaban || "-") + " %";
+        document.getElementById("co2").innerText = (data.CO2 || "-") + " ppm";
+        document.getElementById("status").innerText = data.status || "-";
+      });
+    });
+  </script>
+</head>
+<body style="font-family:sans-serif; text-align:center; background:#f8f8f8; color:#333;">
+  <h1>📊 Monitoring Kualitas Udara</h1>
+  <p><strong>Suhu:</strong> <span id="suhu">-</span></p>
+  <p><strong>Kelembaban:</strong> <span id="kelembaban">-</span></p>
+  <p><strong>CO₂:</strong> <span id="co2">-</span></p>
+  <p><strong>Status Udara:</strong> <span id="status">-</span></p>
+</body>
+</html>
