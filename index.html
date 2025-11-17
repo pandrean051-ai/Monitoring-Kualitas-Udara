@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IAQ Firebase Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>🌌 IAQ Monitoring Dashboard</h1>
+
+    <div class="cards">
+      <div class="card"><h3>Suhu</h3><p id="suhu">-- °C</p></div>
+      <div class="card"><h3>Kelembaban</h3><p id="kelembaban">-- %</p></div>
+      <div class="card"><h3>CO₂</h3><p id="mq135">-- ppm</p></div>
+      <div class="card"><h3>Debu</h3><p id="partikel">-- mg/m³</p></div>
+      <div class="card status"><h3>Status</h3><p id="status">--</p></div>
+    </div>
+
+    <canvas id="chartSuhu"></canvas>
+    <canvas id="chartCO2"></canvas>
+  </div>
+
+  <script type="module" src="script.js"></script>
+</body>
+</html>
