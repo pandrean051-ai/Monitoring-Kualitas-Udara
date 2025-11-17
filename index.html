@@ -1,52 +1,132 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<title>Dashboard IAQ Monitoring</title>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="script.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IAQ Monitoring — Dashboard</title>
 
-<style>
-body { font-family: Arial; background: #f8f8f8; padding: 20px; }
-.card {
-    background: #fff; padding: 15px; border-radius: 10px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;
-}
-.value { font-size: 28px; font-weight: bold; color: #007bff; }
-.status-green { color: green; font-weight: bold; }
-.status-red { color: red; font-weight: bold; }
-</style>
+  <!-- Google Font -->
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <!-- Material Symbols -->
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded" rel="stylesheet" />
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase (v8 compat) -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+  <style>
+    :root{
+      --accent: #4f46e5;
+      --accent-2: #06b6d4;
+    }
+    body { margin:0; font-family: 'Poppins', sans-serif; background: #0f172a; color:#e6eef8; padding:20px; }
+    body.light { background: #f2f4f7; color:#0f172a; }
+    .container{ max-width:1100px; margin:0 auto; }
+    .header{
+      background: linear-gradient(135deg,var(--accent),var(--accent-2));
+      padding:22px; border-radius:16px; box-shadow:0 10px 30px rgba(2,6,23,0.5); position:relative;
+    }
+    .header h1{ margin:0; font-size:22px; color:#fff; }
+    .toggle { position:absolute; right:18px; top:18px; background: rgba(255,255,255,0.12); border:none; color:#fff; padding:8px 12px; border-radius:12px; cursor:pointer; backdrop-filter: blur(6px); display:flex; align-items:center; gap:8px; }
+
+    .grid{ display:grid; grid-template-columns: 1fr 380px; gap:18px; margin-top:20px; }
+    @media(max-width:900px){ .grid{ grid-template-columns:1fr; } }
+
+    .card{ background: rgba(255,255,255,0.04); padding:18px; border-radius:14px; box-shadow:0 8px 30px rgba(2,6,23,0.6); }
+    body.light .card{ background: rgba(255,255,255,0.85); box-shadow:0 6px 20px rgba(15,23,42,0.06); color:inherit; }
+
+    .title{ font-weight:600; margin-bottom:12px; display:flex; align-items:center; gap:10px; }
+    .value{ font-weight:700; color:var(--accent); }
+    body.light .value{ color:var(--accent); }
+
+    .sensors{ display:flex; flex-direction:column; gap:8px; }
+    .sensor-row{ display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:8px; }
+    .sensor-left{ display:flex; align-items:center; gap:10px; }
+    .icon{ font-family:'Material Symbols Rounded'; font-size:20px; opacity:0.95; }
+
+    .status-pill{ padding:6px 10px; border-radius:999px; font-weight:600; }
+    .good{ background:#0ea5a4; color:white; }
+    .normal{ background:#f59e0b; color:white; }
+    .bad{ background:#ef4444; color:white; }
+
+    canvas{ background: transparent; }
+
+    .small { font-size:13px; color:inherit; opacity:0.9; }
+    footer{ text-align:center; margin-top:26px; opacity:0.7; font-size:13px; }
+  </style>
 </head>
-
 <body>
+  <div class="container">
+    <header class="header">
+      <h1>📊 IAQ Monitoring Dashboard</h1>
+      <button class="toggle" id="modeBtn"><span class="material-symbols-rounded">dark_mode</span><span id="modeLabel">Dark</span></button>
+    </header>
 
-<h1>Dashboard IAQ Monitoring</h1>
+    <div class="grid">
+      <main>
+        <section class="card">
+          <div class="title"><span class="material-symbols-rounded">sensors</span> Data Real-Time</div>
+          <div class="sensors">
+            <div class="sensor-row">
+              <div class="sensor-left"><span class="icon">device_thermostat</span><div><div class="small">Suhu</div><div id="suhu" class="value">-- °C</div></div></div>
+              <div id="suhuDelta" class="small">—</div>
+            </div>
 
-<div class="card">
-    <h2>Data Real-Time</h2>
-    Suhu: <span id="suhu" class="value">--</span> °C<br>
-    Kelembaban: <span id="kelembaban" class="value">--</span> %<br>
-    Debu: <span id="debu" class="value">--</span> mg/m³<br>
-    CO₂: <span id="co2" class="value">--</span> ppm<br>
-    Status: <span id="status" class="value">--</span>
-</div>
+            <div class="sensor-row">
+              <div class="sensor-left"><span class="icon">water_drop</span><div><div class="small">Kelembaban</div><div id="humid" class="value">-- %</div></div></div>
+              <div id="humidDelta" class="small">—</div>
+            </div>
 
-<div class="card">
-    <h3>Grafik Rata-rata Per Jam</h3>
-    <canvas id="chartHour"></canvas>
-</div>
+            <div class="sensor-row">
+              <div class="sensor-left"><span class="icon">air</span><div><div class="small">Debu</div><div id="debu" class="value">-- mg/m³</div></div></div>
+              <div id="debuDelta" class="small">—</div>
+            </div>
 
-<div class="card">
-    <h3>Grafik Rata-rata Per Hari</h3>
-    <canvas id="chartDay"></canvas>
-</div>
+            <div class="sensor-row">
+              <div class="sensor-left"><span class="icon">co2</span><div><div class="small">CO₂</div><div id="co2" class="value">-- ppm</div></div></div>
+              <div id="co2Delta" class="small">—</div>
+            </div>
 
-<div class="card">
-    <h3>Grafik Rata-rata Per Bulan</h3>
-    <canvas id="chartMonth"></canvas>
-</div>
+            <div class="sensor-row">
+              <div class="sensor-left"><span class="icon">monitor_heart</span><div><div class="small">Status</div><div id="status" class="value">--</div></div></div>
+              <div id="statusPill"></div>
+            </div>
+          </div>
+        </section>
 
+        <section class="card" style="margin-top:18px;">
+          <div class="title"><span class="material-symbols-rounded">schedule</span> Grafik Rata-rata Per Jam</div>
+          <canvas id="chartHour" height="120"></canvas>
+        </section>
+
+        <section class="card" style="margin-top:18px;">
+          <div class="title"><span class="material-symbols-rounded">calendar_today</span> Grafik Rata-rata Per Hari</div>
+          <canvas id="chartDay" height="120"></canvas>
+        </section>
+
+        <section class="card" style="margin-top:18px;">
+          <div class="title"><span class="material-symbols-rounded">date_range</span> Grafik Rata-rata Per Bulan</div>
+          <canvas id="chartMonth" height="120"></canvas>
+        </section>
+      </main>
+
+      <aside>
+        <div class="card">
+          <div class="title"><span class="material-symbols-rounded">info</span> Ringkasan</div>
+          <div class="small" id="summary">Menunggu data...</div>
+        </div>
+
+        <div class="card" style="margin-top:18px;">
+          <div class="title"><span class="material-symbols-rounded">settings</span> Kontrol</div>
+          <div class="small">Auto-refresh data setiap 5 detik. Anda bisa ubah interval di <code>script.js</code></div>
+        </div>
+      </aside>
+    </div>
+
+    <footer>Made for IAQ with ❤ — Upload ke GitHub Pages untuk publikasi</footer>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>
