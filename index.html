@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Dashboard IAQ Monitoring</title>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="script.js"></script>
+
+<style>
+body { font-family: Arial; background: #f8f8f8; padding: 20px; }
+.card {
+    background: #fff; padding: 15px; border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px;
+}
+.value { font-size: 28px; font-weight: bold; color: #007bff; }
+.status-green { color: green; font-weight: bold; }
+.status-red { color: red; font-weight: bold; }
+</style>
+</head>
+
+<body>
+
+<h1>Dashboard IAQ Monitoring</h1>
+
+<div class="card">
+    <h2>Data Real-Time</h2>
+    Suhu: <span id="suhu" class="value">--</span> °C<br>
+    Kelembaban: <span id="kelembaban" class="value">--</span> %<br>
+    Debu: <span id="debu" class="value">--</span> mg/m³<br>
+    CO₂: <span id="co2" class="value">--</span> ppm<br>
+    Status: <span id="status" class="value">--</span>
+</div>
+
+<div class="card">
+    <h3>Grafik Rata-rata Per Jam</h3>
+    <canvas id="chartHour"></canvas>
+</div>
+
+<div class="card">
+    <h3>Grafik Rata-rata Per Hari</h3>
+    <canvas id="chartDay"></canvas>
+</div>
+
+<div class="card">
+    <h3>Grafik Rata-rata Per Bulan</h3>
+    <canvas id="chartMonth"></canvas>
+</div>
+
+</body>
+</html>
