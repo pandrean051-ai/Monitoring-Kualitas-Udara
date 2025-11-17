@@ -1,0 +1,1 @@
+// placeholder script.js; insert Firebase logic here
