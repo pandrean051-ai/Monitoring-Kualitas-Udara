@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Monitoring Kualitas Udara IAQ</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Monitoring Kualitas Udara — IAQ</h1>
+    <div id="lastUpdated">—</div>
+  </header>
+
+  <main>
+    <section class="cards">
+      <div class="card">
+        <h3>Suhu</h3>
+        <div id="suhu" class="value">-- °C</div>
+      </div>
+      <div class="card">
+        <h3>Kelembapan</h3>
+        <div id="kelembapan" class="value">-- %</div>
+      </div>
+      <div class="card">
+        <h3>CO₂</h3>
+        <div id="co2" class="value">-- ppm</div>
+      </div>
+      <div class="card">
+        <h3>Debu</h3>
+        <div id="debu" class="value">-- µg/m³</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>Grafik Per Jam (terakhir 24 jam)</h2>
+      <canvas id="chartHour"></canvas>
+    </section>
+
+    <section>
+      <h2>Grafik Per Hari (30 hari terakhir)</h2>
+      <canvas id="chartDay"></canvas>
+    </section>
+
+    <section>
+      <h2>Grafik Per Bulan (12 bulan terakhir)</h2>
+      <canvas id="chartMonth"></canvas>
+    </section>
+
+    <footer>
+      <small>Dashboard contoh — sesuaikan Firebase config di <code>app.js</code></small>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
