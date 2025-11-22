@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IAQ Monitoring Dashboard</title>
+
+<!-- Tailwind CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+
+<!-- Firebase (v8) -->
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- External CSS -->
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100">
+
+    <div class="container mx-auto p-4 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl lg:text-4xl font-extrabold text-gray-50 mb-2">IAQ Monitoring Dashboard</h1>
+            <p class="text-sm text-gray-400">Versi: distributed project (index.html + styles.css + README)</p>
+        </header>
+
+        <div class="flex justify-center flex-wrap gap-4 mb-10">
+            <button id="nav-dashboard" onclick="switchView('dashboard')" class="px-6 py-2 rounded-full font-semibold transition duration-300">Dashboard Realtime</button>
+            <button id="nav-recap" onclick="switchView('recap')" class="px-6 py-2 rounded-full font-semibold transition duration-300">Rekap Data (Per Menit)</button>
+        </div>
+
+        <div id="dashboard-section">
+            <div id="iaq-status" class="p-4 text-white font-bold rounded-xl shadow-xl text-center mb-4 bg-gray-600">
+                Memuat Status...
+            </div>
+            <div id="last-updated-time" class="mb-8">
+                <p class="text-sm text-gray-400 text-center mt-2">Memuat waktu pembaruan...</p>
+            </div>
+
+            <div id="sensor-cards" class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
+                <!-- Cards akan diisi oleh JavaScript -->
+            </div>
+
+            <h2 class="text-2xl font-bold text-gray-100 mb-8 mt-12">Data Trends (Hourly, Daily, Monthly)</h2>
+            <p id="loading-message" class="text-center text-blue-400 mb-4">Memuat data log dan menghitung tren (simulasi untuk demo)...</p>
+
+            <h3 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-700 pb-2">Tren Per Jam (24 Jam Terakhir)</h3>
+            <div id="hourly-trends-container" class="flex flex-wrap -mx-4 mb-8"></div>
+
+            <h3 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-700 pb-2">Tren Harian (7 Hari Terakhir)</h3>
+            <div id="daily-trends-container" class="flex flex-wrap -mx-4 mb-8"></div>
+
+            <h3 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-700 pb-2">Tren Bulanan (12 Bulan Terakhir)</h3>
+            <div id="monthly-trends-container" class="flex flex-wrap -mx-4 mb-10"></div>
+        </div>
+
+        <div id="recap-section" class="hidden">
+            <h2 id="recap-title" class="text-3xl font-bold text-gray-100 mb-4">Rekap Data (Per Menit)</h2>
+
+            <div id="recap-period-nav" class="flex flex-wrap gap-2 mb-6">
+                <button data-period="minute" onclick="setRecapPeriod('minute')" class="px-4 py-2 rounded-lg font-semibold transition duration-300">Per Menit</button>
+                <button data-period="hourly" onclick="setRecapPeriod('hourly')" class="px-4 py-2 rounded-lg font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300">Per Jam</button>
+                <button data-period="daily" onclick="setRecapPeriod('daily')" class="px-4 py-2 rounded-lg font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300">Per Hari</button>
+                <button data-period="monthly" onclick="setRecapPeriod('monthly')" class="px-4 py-2 rounded-lg font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300">Per Bulan</button>
+            </div>
+
+            <div class="flex justify-end mb-4">
+                <button onclick="downloadLogAsCSV()" class="flex items-center space-x-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition duration-300">
+                    <span id="download-csv-span">Download CSV (60 Entri)</span>
+                </button>
+            </div>
+
+            <div class="bg-gray-800 rounded-xl shadow-lg overflow-x-auto border border-gray-700">
+                <table class="min-w-full divide-y divide-gray-700 log-table">
+                    <thead>
+                        <tr id="log-table-header">
+                            <th id="timestamp-header" class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">Waktu (Per Menit)</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">Suhu</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">Kelembaban</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">Debu</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">CO2</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="log-table-body" class="divide-y divide-gray-800">
+                        <tr><td colspan="6" class="p-6 text-center text-gray-500">Memuat data rekap... (Data Simulasi)</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+<script>
+// ---------- CONFIG (GANTI DENGAN KONFIG FIREBASE KAMU) ----------
+let firebaseConfig = {
+    apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "monitoring-kualitas-udar-8ad9d",
+};
+
+// GLOBALS
+const SENSORS = ['suhu', 'kelembaban', 'debu', 'co2'];
+const SENSOR_LABELS = {
+    suhu: { label: 'Temperature (°C)', unit: ' °C', color: 'rgb(255, 99, 132)' },
+    kelembaban: { label: 'Humidity (%)', unit: ' %', color: 'rgb(54, 162, 235)' },
+    debu: { label: 'Dust (mg/m³)', unit: ' mg/m³', color: 'rgb(255, 205, 86)' },
+    co2: { label: 'CO2 (ppm)', unit: ' ppm', color: 'rgb(75, 192, 192)' }
+};
+let app, db;
+let currentView = 'dashboard';
+let currentRecapPeriod = 'minute';
+const LOG_ENTRY_COUNT = 60, HOURLY_RECAP_COUNT = 24, DAILY_RECAP_COUNT = 7, MONTHLY_RECAP_COUNT = 12;
+
+// UTIL
+function switchView(view){
+    currentView = view;
+    document.getElementById('dashboard-section').classList.toggle('hidden', view !== 'dashboard');
+    document.getElementById('recap-section').classList.toggle('hidden', view !== 'recap');
+    document.getElementById('nav-dashboard').className = view === 'dashboard' ? "px-6 py-2 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg" : "px-6 py-2 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300";
+    document.getElementById('nav-recap').className = view === 'recap' ? "px-6 py-2 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg" : "px-6 py-2 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300";
+    if(view==='recap') setRecapPeriod(currentRecapPeriod);
+}
+function getCurrentFormattedTime(){ return new Date().toLocaleString('id-ID',{ year:'numeric', month:'long', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', timeZoneName:'short' });}
+function getStatusColor(status){ switch(status){ case 'Bersih': return 'bg-green-600'; case 'Normal': return 'bg-yellow-600'; case 'Buruk': return 'bg-red-600'; default: return 'bg-gray-600'; } }
+
+// CSV download
+function downloadLogAsCSV(){
+    const period = currentRecapPeriod;
+    const logs = getLogData(period);
+    if(logs.length===0){ console.warn("Tidak ada data log untuk diunduh."); return; }
+    const headers = [`Waktu (Per ${period})`,"Suhu (C)","Kelembaban (%)","Debu (mg/m³)","CO2 (ppm)","Status"];
+    let csvContent = headers.join(";") + "\n";
+    logs.forEach(log=>{
+        const row = [`"${log.timestamp}"`, log.suhu, log.kelembaban, log.debu, log.co2, log.status];
+        csvContent += row.join(";") + "\n";
+    });
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    const now = new Date();
+    const filename = `IAQ_Recap_${period}_${now.toISOString().split('T')[0]}.csv`;
+    link.setAttribute('download', filename);
+    link.style.visibility='hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+// Firebase realtime listener
+function listenForCurrentStatus(){
+    db.ref('/IAQ').on('value', snapshot=>{
+        const data = snapshot.val();
+        if(!data) return;
+        const realtimeTimestamp = getCurrentFormattedTime();
+        const statusDiv = document.getElementById('iaq-status');
+        const color = getStatusColor(data.status);
+        statusDiv.className = `p-4 text-white font-bold rounded-xl shadow-xl text-center mb-4 ${color}`;
+        statusDiv.innerHTML = `<p class="text-2xl">${(data.status||'').toString().toUpperCase()}</p><p class="text-sm mt-1">Kualitas Udara Terkini</p>`;
+        document.getElementById('last-updated-time').innerHTML = `<p class="text-sm text-gray-400 text-center mt-2">Data terakhir diperbarui pada: <strong class="text-gray-100">${realtimeTimestamp}</strong></p>`;
+        let cardsHtml='';
+        SENSORS.forEach(key=>{
+            const info = SENSOR_LABELS[key];
+            const value = data[key] !== undefined ? (key==='debu'? Number(data[key]).toFixed(3) : Number(data[key]).toFixed(1)) : 'N/A';
+            const valueColor = key==='suhu' ? 'text-red-400' : key==='kelembaban' ? 'text-blue-400' : key==='debu' ? 'text-yellow-400' : 'text-green-400';
+            cardsHtml += `<div class="bg-gray-800 p-6 rounded-xl shadow-lg text-center border border-gray-700"><p class="text-xs font-semibold uppercase text-gray-400">${info.label.split('(')[0].trim()}</p><p class="text-4xl font-extrabold mt-2 ${valueColor}">${value}</p><p class="text-sm text-gray-500">${info.unit.trim()}</p></div>`;
+        });
+        document.getElementById('sensor-cards').innerHTML = cardsHtml;
+    }, error=>{
+        console.error("Error reading IAQ data:", error);
+        document.getElementById('iaq-status').textContent = "Status: Gagal memuat data.";
+    });
+}
+
+// Simulated logs & recaps (used for demo/trends)
+function generateSimulatedMinuteLog(count=LOG_ENTRY_COUNT){
+    const logs=[]; let now=new Date();
+    for(let i=0;i<count;i++){
+        const timestamp=new Date(now.getTime()-i*60000);
+        logs.push({ timestamp: timestamp.toLocaleString('id-ID',{ hour:'2-digit',minute:'2-digit',second:'2-digit',day:'2-digit',month:'2-digit',year:'numeric'}), suhu:(Math.random()*5+20).toFixed(1), kelembaban:(Math.random()*10+70).toFixed(1), debu:(Math.random()*0.1+0.05).toFixed(3), co2:(Math.random()*500+800).toFixed(0), status: i%10===0?'Buruk':(i%5===0?'Normal':'Bersih') });
+    }
+    return logs.reverse();
+}
+function generateSimulatedHourlyRecap(count=HOURLY_RECAP_COUNT){
+    const logs=[]; let now=new Date();
+    for(let i=0;i<count;i++){
+        const hour=(now.getHours()-i+24)%24;
+        const timestamp=`${String(hour).padStart(2,'0')}:00`;
+        logs.push({ timestamp, suhu:(Math.random()*3+25).toFixed(1), kelembaban:(Math.random()*5+75).toFixed(1), debu:(Math.random()*0.05+0.08).toFixed(3), co2:(Math.random()*300+900).toFixed(0), status: i%8===0?'Buruk':(i%4===0?'Normal':'Bersih') });
+    }
+    return logs.reverse();
+}
+function generateSimulatedDailyRecap(count=DAILY_RECAP_COUNT){
+    const logs=[]; let now=new Date();
+    for(let i=count-1;i>=0;i--){
+        const date=new Date(now); date.setDate(now.getDate()-i);
+        logs.push({ timestamp: date.toLocaleDateString('id-ID',{ weekday:'short', day:'2-digit', month:'short'}), suhu:(Math.random()*2+27).toFixed(1), kelembaban:(Math.random()*5+70).toFixed(1), debu:(Math.random()*0.03+0.1).toFixed(3), co2:(Math.random()*200+1000).toFixed(0), status: i===0?'Normal':(i%3===0?'Buruk':'Bersih') });
+    }
+    return logs;
+}
+function generateSimulatedMonthlyRecap(count=MONTHLY_RECAP_COUNT){
+    const logs=[]; const monthNames=['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des']; let now=new Date(); const currentMonth=now.getMonth();
+    for(let i=0;i<count;i++){ const monthIndex=(currentMonth-i+12)%12; logs.push({ timestamp: monthNames[monthIndex] + " " + now.getFullYear(), suhu:(Math.random()*1+28).toFixed(1), kelembaban:(Math.random()*8+65).toFixed(1), debu:(Math.random()*0.01+0.12).toFixed(3), co2:(Math.random()*100+1100).toFixed(0), status:i%4===0?'Buruk':'Bersih' }); }
+    return logs.reverse();
+}
+function getLogData(period){ switch(period){ case 'minute': return generateSimulatedMinuteLog(LOG_ENTRY_COUNT); case 'hourly': return generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT); case 'daily': return generateSimulatedDailyRecap(DAILY_RECAP_COUNT); case 'monthly': return generateSimulatedMonthlyRecap(MONTHLY_RECAP_COUNT); default: return []; } }
+
+function setRecapPeriod(period){
+    currentRecapPeriod = period;
+    const periodTitle = period === 'minute' ? 'Per Menit' : period === 'hourly' ? 'Per Jam' : period === 'daily' ? 'Per Hari' : 'Per Bulan';
+    document.getElementById('recap-title').textContent = `Rekap Data (${periodTitle})`;
+    renderLogTable();
+    const count = period === 'minute' ? LOG_ENTRY_COUNT : period === 'hourly' ? HOURLY_RECAP_COUNT : period === 'daily' ? DAILY_RECAP_COUNT : MONTHLY_RECAP_COUNT;
+    document.getElementById('download-csv-span').textContent = `Download CSV (${count} Entri)`;
+    const buttons = document.querySelectorAll('#recap-period-nav button');
+    buttons.forEach(btn=>{
+        if(btn.dataset.period===period){ btn.classList.replace('bg-gray-700','bg-blue-600'); btn.classList.replace('hover:bg-gray-600','hover:bg-blue-700'); btn.classList.remove('text-gray-300'); btn.classList.add('text-white'); }
+        else{ btn.classList.replace('bg-blue-600','bg-gray-700'); btn.classList.replace('hover:bg-blue-700','hover:bg-gray-600'); btn.classList.remove('text-white'); btn.classList.add('text-gray-300'); }
+    });
+}
+
+function renderLogTable(){
+    const logData = getLogData(currentRecapPeriod);
+    const tableBody = document.getElementById('log-table-body');
+    const tableHeader = document.getElementById('log-table-header');
+    const periodLabel = currentRecapPeriod === 'minute' ? 'Per Menit' : currentRecapPeriod === 'hourly' ? 'Per Jam' : currentRecapPeriod === 'daily' ? 'Per Hari' : 'Per Bulan';
+    tableHeader.querySelector('#timestamp-header').textContent = `Waktu (${periodLabel})`;
+    let html = '';
+    logData.forEach((log, index)=>{
+        const statusTextColor = getStatusColor(log.status).replace('bg-','text-');
+        html += `<tr class="hover:bg-gray-700 transition duration-150 ${index%2===0?'bg-gray-800/50':'bg-gray-900/50'}"><td class="px-6 py-3 whitespace-nowrap text-sm text-gray-400">${log.timestamp}</td><td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-red-400">${log.suhu} ${SENSOR_LABELS.suhu.unit.trim()}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-blue-400">${log.kelembaban} ${SENSOR_LABELS.kelembaban.unit.trim()}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-yellow-400">${log.debu} ${SENSOR_LABELS.debu.unit.trim()}</td><td class="px-6 py-3 whitespace-nowrap text-sm text-green-400">${log.co2} ${SENSOR_LABELS.co2.unit.trim()}</td><td class="px-6 py-3 whitespace-nowrap text-sm font-bold ${statusTextColor}">${log.status}</td></tr>`;
+    });
+    if(logData.length===0){ html = `<tr><td colspan="6" class="p-6 text-center text-gray-500">Tidak ada data rekap untuk periode ini.</td></tr>`; }
+    tableBody.innerHTML = html;
+}
+
+async function fetchAndRenderTrends(){
+    document.getElementById('loading-message').classList.remove('hidden');
+    Chart.defaults.color = '#e5e7eb';
+    Chart.defaults.borderColor = 'rgba(107, 114, 128, 0.5)';
+    const hourlyLabels = Array.from({length:24}, (_,i)=>`${String(i).padStart(2,'0')}:00`);
+    const simulatedHourlyData = { suhu: {values: generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT).map(l=>l.suhu)}, kelembaban:{values:generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT).map(l=>l.kelembaban)}, debu:{values:generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT).map(l=>l.debu)}, co2:{values:generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT).map(l=>l.co2)} };
+    document.getElementById('hourly-trends-container').innerHTML = `<div class="w-full p-4"><div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700"><h3 class="text-lg font-bold text-gray-200 mb-4">Tren Per Jam (24 Jam Terakhir) - Semua Sensor</h3><canvas id="combined-hourly-chart"></canvas></div></div>`;
+    const combinedHourlyDatasets = SENSORS.map(key=>({ label:SENSOR_LABELS[key].label.split('(')[0].trim(), data:simulatedHourlyData[key].values, borderColor:SENSOR_LABELS[key].color, backgroundColor:SENSOR_LABELS[key].color.replace('rgb','rgba').replace(')',', 0.0)'), fill:false, tension:0.2 }));
+    const ctxHourly = document.getElementById('combined-hourly-chart').getContext('2d');
+    new Chart(ctxHourly, { type:'line', data:{ labels:hourlyLabels, datasets:combinedHourlyDatasets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:false, grid:{ color:'rgba(107, 114, 128, 0.3)'} }, x:{ grid:{ color:'rgba(107, 114, 128, 0.3)'} } }, plugins:{ legend:{ display:true, labels:{ color:'#e5e7eb' } } } } });
+    const dailyRecapData = generateSimulatedDailyRecap(DAILY_RECAP_COUNT);
+    const dailyLabels = dailyRecapData.map(l=>l.timestamp);
+    const simulatedDailyData = { suhu:{values:dailyRecapData.map(l=>l.suhu)}, kelembaban:{values:dailyRecapData.map(l=>l.kelembaban)}, debu:{values:dailyRecapData.map(l=>l.debu)}, co2:{values:dailyRecapData.map(l=>l.co2)} };
+    document.getElementById('daily-trends-container').innerHTML = `<div class="w-full p-4"><div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700"><h3 class="text-lg font-bold text-gray-200 mb-4">Tren Harian (7 Hari Terakhir) - Semua Sensor</h3><canvas id="combined-daily-chart"></canvas></div></div>`;
+    const combinedDailyDatasets = SENSORS.map(key=>({ label:SENSOR_LABELS[key].label.split('(')[0].trim(), data:simulatedDailyData[key].values, borderColor:SENSOR_LABELS[key].color, backgroundColor:SENSOR_LABELS[key].color.replace('rgb','rgba').replace(')',', 0.0)'), fill:false, tension:0.2 }));
+    const ctxDaily = document.getElementById('combined-daily-chart').getContext('2d');
+    new Chart(ctxDaily, { type:'line', data:{ labels:dailyLabels, datasets:combinedDailyDatasets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:false, grid:{ color:'rgba(107, 114, 128, 0.3)'} }, x:{ grid:{ color:'rgba(107, 114, 128, 0.3)'} } }, plugins:{ legend:{ display:true, labels:{ color:'#e5e7eb' } } } } });
+    const monthlyRecapData = generateSimulatedMonthlyRecap(MONTHLY_RECAP_COUNT);
+    const monthlyLabels = monthlyRecapData.map(l=>l.timestamp);
+    const simulatedMonthlyData = { suhu:{values:monthlyRecapData.map(l=>l.suhu)}, kelembaban:{values:monthlyRecapData.map(l=>l.kelembaban)}, debu:{values:monthlyRecapData.map(l=>l.debu)}, co2:{values:monthlyRecapData.map(l=>l.co2)} };
+    document.getElementById('monthly-trends-container').innerHTML = `<div class="w-full p-4"><div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700"><h3 class="text-lg font-bold text-gray-200 mb-4">Tren Bulanan (12 Bulan Terakhir) - Semua Sensor</h3><canvas id="combined-monthly-chart"></canvas></div></div>`;
+    const combinedMonthlyDatasets = SENSORS.map(key=>({ label:SENSOR_LABELS[key].label.split('(')[0].trim(), data:simulatedMonthlyData[key].values, borderColor:SENSOR_LABELS[key].color, backgroundColor:SENSOR_LABELS[key].color.replace('rgb','rgba').replace(')',', 0.6)'), fill:false, tension:0.2 }));
+    const ctxMonthly = document.getElementById('combined-monthly-chart').getContext('2d');
+    new Chart(ctxMonthly, { type:'bar', data:{ labels:monthlyLabels, datasets:combinedMonthlyDatasets }, options:{ responsive:true, maintainAspectRatio:false, scales:{ y:{ beginAtZero:false, grid:{ color:'rgba(107, 114, 128, 0.3)'} }, x:{ grid:{ color:'rgba(107, 114, 128, 0.3)'} } }, plugins:{ legend:{ display:true, labels:{ color:'#e5e7eb' } } } } });
+    document.getElementById('loading-message').classList.add('hidden');
+}
+
+function initApp(){
+    try{
+        app = firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+        listenForCurrentStatus();
+        fetchAndRenderTrends();
+        switchView('dashboard');
+        setRecapPeriod('minute');
+    } catch(error){
+        console.error("Firebase init failed:", error);
+        document.getElementById('iaq-status').textContent = "Status: Kesalahan Konfigurasi Firebase.";
+    }
+}
+window.onload = initApp;
+</script>
+
+</body>
+</html>
