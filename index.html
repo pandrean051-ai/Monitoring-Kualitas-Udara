@@ -29,7 +29,7 @@
 
         <div class="flex justify-center flex-wrap gap-4 mb-10">
             <button id="nav-dashboard" onclick="switchView('dashboard')" class="px-6 py-2 rounded-full font-semibold transition duration-300">Dashboard Realtime</button>
-            <button id="nav-recap" onclick="switchView('recap')" class="px-6 py-2 rounded-full font-semibold transition duration-300">Rekap Data (Per Menit)</button>
+            <button id="nav-recap" onclick="switchView('recap')" class="px-6 py-2 rounded-full font-semibold transition duration-300">Rekap Data</button>
         </div>
 
         <div id="dashboard-section">
@@ -44,7 +44,7 @@
                 <!-- Cards akan diisi oleh JavaScript -->
             </div>
 
-            <h2 class="text-2xl font-bold text-gray-100 mb-8 mt-12">Data Trends (Hourly, Daily, Monthly)</h2>
+            <h2 class="text-2xl font-bold text-gray-100 mb-8 mt-12">Data Trends (Jam, Hari, Bulan)</h2>
             <p id="loading-message" class="text-center text-blue-400 mb-4">Memuat data log dan menghitung tren (simulasi untuk demo)...</p>
 
             <h3 class="text-xl font-bold text-gray-300 mb-4 border-b border-gray-700 pb-2">Tren Per Jam (24 Jam Terakhir)</h3>
@@ -58,7 +58,7 @@
         </div>
 
         <div id="recap-section" class="hidden">
-            <h2 id="recap-title" class="text-3xl font-bold text-gray-100 mb-4">Rekap Data (Per Menit)</h2>
+            <h2 id="recap-title" class="text-3xl font-bold text-gray-100 mb-4">Rekap Data</h2>
 
             <div id="recap-period-nav" class="flex flex-wrap gap-2 mb-6">
                 <button data-period="minute" onclick="setRecapPeriod('minute')" class="px-4 py-2 rounded-lg font-semibold transition duration-300">Per Menit</button>
