@@ -1,889 +1,256 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IAQ Monitoring Dashboard</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <title>Dashboard IAQ - Fixed Version</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/gauge.js/dist/gauge.min.js"></script> 
-    
+    <script src="https://bernii.github.io/gauge.js/dist/gauge.min.js">
+    </script>
+
     <style>
         :root { font-family: 'Inter', sans-serif; }
-        body { background-color: #0d1117; color: #c9d1d9; } /* Tema Gelap */
-        
-        /* Gaya khusus untuk Tabel Recap */
+        body { background-color: #0d1117; color: #c9d1d9; }
+
         .log-table th {
-            @apply px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider bg-gray-700;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+            padding-top: 0.75rem;
+            padding-bottom: 0.75rem;
+            text-align: left;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #9CA3AF;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            background-color: #374151;
         }
+
+        .gauge-container { max-height: 140px; }
     </style>
-    
-    <script>
-        // ==========================================
-        // 1. FIREBASE CONFIGURATION (WAJIB DIGANTI)
-        // ==========================================
-        let firebaseConfig = {
-            // GANTI dengan FIREBASE CONFIG Anda yang sudah benar
-            apiKey: "AIzaSyC0m6qS3kUaL-19N4WW4wXpA9-7jBNs3PA",
-            databaseURL: "https://monitoring-kualitas-udar-c4f15-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "monitoring-kualitas-udar-c4f15",
-        };
-
-        // Menggunakan konfigurasi lingkungan Canvas jika tersedia (dibiarkan, tapi tidak relevan untuk lokal)
-        if (typeof __firebase_config !== 'undefined') {
-            try {
-                const envConfig = JSON.parse(__firebase_config);
-                firebaseConfig = { ...firebaseConfig, ...envConfig };
-            } catch (e) {
-                console.error("Gagal memparsing __firebase_config:", e);
-            }
-        }
-
-
-        // ==========================================
-        // 2. GLOBAL VARIABLES & GAUGE SETUP
-        // ==========================================
-        const SENSORS = ['suhu', 'kelembaban', 'debu', 'co2'];
-        const SENSOR_LABELS = {
-            suhu: { label: 'Temperature (°C)', unit: ' °C', color: 'rgb(255, 99, 132)', max: 50 },
-            kelembaban: { label: 'Humidity (%)', unit: ' %', color: 'rgb(54, 162, 235)', max: 100 },
-            debu: { label: 'Dust (mg/m³)', unit: ' mg/m³', color: 'rgb(255, 205, 86)', max: 0.5 },
-            co2: { label: 'CO2 (ppm)', unit: ' ppm', color: 'rgb(75, 192, 192)', max: 2000 }
-        };
-
-        let app;
-        let db;
-        let currentView = 'dashboard';
-        let currentRecapPeriod = 'minute';
-        
-        const LOG_ENTRY_COUNT = 60;
-        const HOURLY_RECAP_COUNT = 24;
-        const DAILY_RECAP_COUNT = 7;
-        const MONTHLY_RECAP_COUNT = 12;
-
-        // Wadah untuk objek Gauge
-        let gauges = {}; 
-
-
-        /**
-         * Menginisialisasi objek Gauge.js untuk setiap sensor.
-         */
-        function initializeGauges() {
-            SENSORS.forEach(key => {
-                const target = document.getElementById(`gauge-${key}`);
-                if (target) {
-                    const opts = {
-                        angle: 0.15, // Sudut awal
-                        lineWidth: 0.44, // Ketebalan garis
-                        radiusScale: 1.0, 
-                        pointer: {
-                            length: 0.6, // Panjang jarum
-                            strokeWidth: 0.035,
-                            color: '#e5e7eb' // Warna jarum (putih cerah)
-                        },
-                        // Rentang warna (hijau, kuning, merah)
-                        limitMax: true, 
-                        limitMin: false, 
-                        highDpiSupport: true,
-                        // Custom color zones based on general IAQ standards (adjust as needed)
-                        staticZones: [
-                            // Suhu: Normal (20-30), Kelembaban: Normal (40-60), Debu: Normal (0-0.15), CO2: Normal (400-1000)
-                            // Ini adalah placeholder. Anda mungkin perlu menyesuaikan berdasarkan standar IAQ Anda.
-                            { strokeStyle: "#38a169", min: 0, max: SENSOR_LABELS[key].max * 0.5 }, // Green
-                            { strokeStyle: "#f6ad55", min: SENSOR_LABELS[key].max * 0.5, max: SENSOR_LABELS[key].max * 0.75 }, // Yellow
-                            { strokeStyle: "#e53e3e", min: SENSOR_LABELS[key].max * 0.75, max: SENSOR_LABELS[key].max } // Red
-                        ],
-                        // Warna dasar di belakang statisZones (gelap)
-                        strokeStyle: "#374151" 
-                    };
-                    
-                    gauges[key] = new Gauge(target).setOptions(opts);
-                    // Atur batas min/max
-                    gauges[key].maxValue = SENSOR_LABELS[key].max; 
-                    gauges[key].set(0); // Atur nilai awal ke 0
-                }
-            });
-        }
-
-        // ==========================================
-        // 3. UTILITY FUNCTIONS (sama seperti di kode Anda)
-        // ==========================================
-
-        function switchView(view) {
-            currentView = view;
-            document.getElementById('dashboard-section').classList.toggle('hidden', view !== 'dashboard');
-            document.getElementById('recap-section').classList.toggle('hidden', view !== 'recap');
-            
-            // Update button styles
-            document.getElementById('nav-dashboard').className = view === 'dashboard' 
-                ? "px-6 py-2 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                : "px-6 py-2 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300";
-            
-            document.getElementById('nav-recap').className = view === 'recap' 
-                ? "px-6 py-2 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg"
-                : "px-6 py-2 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300";
-
-            // If switching to recap, render log data and set initial period
-            if (view === 'recap') {
-                setRecapPeriod(currentRecapPeriod); 
-            }
-        }
-
-        function getCurrentFormattedTime() {
-            return new Date().toLocaleString('id-ID', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                timeZoneName: 'short'
-            });
-        }
-        
-        function getStatusColor(status) {
-            switch (status) {
-                case 'Bersih': return 'bg-green-600';
-                case 'Normal': return 'bg-yellow-600';
-                case 'Buruk': return 'bg-red-600';
-                default: return 'bg-gray-600';
-            }
-        }
-
-        function downloadLogAsCSV() {
-            const period = currentRecapPeriod;
-            const logs = getLogData(period);
-            
-            if (logs.length === 0) {
-                console.warn("Tidak ada data log untuk diunduh.");
-                return;
-            }
-
-            // 1. Header CSV
-            const headers = [
-                `Waktu (Per ${period})`, 
-                "Suhu (C)", 
-                "Kelembaban (%)", 
-                "Debu (mg/m³)", 
-                "CO2 (ppm)", 
-                "Status"
-            ];
-            let csvContent = headers.join(";") + "\n"; // Menggunakan semicolon sebagai delimiter
-
-            // 2. Data CSV
-            logs.forEach(log => {
-                const row = [
-                    `"${log.timestamp}"`,
-                    log.suhu,
-                    log.kelembaban,
-                    log.debu,
-                    log.co2,
-                    log.status
-                ];
-                csvContent += row.join(";") + "\n";
-            });
-
-            // 3. Memicu Unduhan
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.setAttribute('href', url);
-            
-            const now = new Date();
-            const filename = `IAQ_Recap_${period}_${now.toISOString().split('T')[0]}.csv`;
-            
-            link.setAttribute('download', filename);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
-        }
-
-        // ==========================================
-        // 4. DATA FETCHING & RENDERING (DIPERBAIKI UNTUK GAUGE)
-        // ==========================================
-        
-        // --- FETCH REALTIME STATUS ---
-        function listenForCurrentStatus() {
-            db.ref('/IAQ').on('value', (snapshot) => {
-                const data = snapshot.val();
-                if (data) {
-                    // *** Mengambil waktu real-time saat snapshot diterima ***
-                    const realtimeTimestamp = getCurrentFormattedTime();
-                    
-                    // Update header status
-                    const statusDiv = document.getElementById('iaq-status');
-                    const color = getStatusColor(data.status);
-                    statusDiv.className = `p-4 text-white font-bold rounded-xl shadow-xl text-center mb-4 ${color}`;
-                    statusDiv.innerHTML = `
-                        <p class="text-2xl">${data.status.toUpperCase()}</p>
-                        <p class="text-sm mt-1">Kualitas Udara Terkini</p>
-                    `;
-
-                    // Update timestamp display
-                    const timeDiv = document.getElementById('last-updated-time');
-                    timeDiv.innerHTML = `<p class="text-sm text-gray-400 text-center mt-2">Data terakhir diperbarui pada: <strong class="text-gray-100">${realtimeTimestamp}</strong></p>`;
-                    
-                    // Update Gauges (SPIDOMETER)
-                    SENSORS.forEach(key => {
-                        const value = data[key] || 0;
-                        if (gauges[key]) {
-                            // PENTING: Gunakan toFixed() hanya untuk tampilan jika perlu.
-                            // Set nilai mentah ke gauge.
-                            gauges[key].set(value); 
-                            
-                            // Tambahkan nilai numerik di bawah Gauge (Opsional, tapi direkomendasikan)
-                            let valueDisplay = document.getElementById(`value-display-${key}`);
-                            if (!valueDisplay) {
-                                // Buat elemen jika belum ada
-                                const gaugeContainer = document.getElementById(`gauge-${key}`).parentElement;
-                                valueDisplay = document.createElement('p');
-                                valueDisplay.id = `value-display-${key}`;
-                                valueDisplay.className = 'text-xl font-bold text-center mt-1 text-gray-200';
-                                gaugeContainer.appendChild(valueDisplay);
-                            }
-                            
-                            // Menampilkan nilai terformat
-                            const formattedValue = value.toFixed(key === 'debu' ? 3 : 1);
-                            valueDisplay.textContent = `${formattedValue} ${SENSOR_LABELS[key].unit.trim()}`;
-                        }
-                    });
-                }
-            }, (error) => {
-                console.error("Error reading IAQ data:", error);
-                document.getElementById('iaq-status').textContent = "Status: Gagal memuat data.";
-            });
-        }
-        
-        // --- LOG DATA SIMULATION FUNCTIONS (sama, diabaikan dari perubahan) ---
-        function generateSimulatedMinuteLog(count = LOG_ENTRY_COUNT) {
-            // ... (kode simulasi yang sama) ...
-            const logs = [];
-            let now = new Date();
-            for (let i = 0; i < count; i++) {
-                const timestamp = new Date(now.getTime() - i * 60000); // Interval 1 menit
-                logs.push({
-                    timestamp: timestamp.toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' }),
-                    suhu: (Math.random() * 5 + 20).toFixed(1),
-                    kelembaban: (Math.random() * 10 + 70).toFixed(1),
-                    debu: (Math.random() * 0.1 + 0.05).toFixed(3),
-                    co2: (Math.random() * 500 + 800).toFixed(0),
-                    status: i % 10 === 0 ? 'Buruk' : (i % 5 === 0 ? 'Normal' : 'Bersih')
-                });
-            }
-            return logs.reverse();
-        }
-
-        function generateSimulatedHourlyRecap(count = HOURLY_RECAP_COUNT) {
-            // ... (kode simulasi yang sama) ...
-            const logs = [];
-            let now = new Date();
-            for (let i = 0; i < count; i++) {
-                const hour = (now.getHours() - i + 24) % 24;
-                const timestamp = `${String(hour).padStart(2, '0')}:00`;
-                logs.push({
-                    timestamp: timestamp,
-                    suhu: (Math.random() * 3 + 25).toFixed(1),
-                    kelembaban: (Math.random() * 5 + 75).toFixed(1),
-                    debu: (Math.random() * 0.05 + 0.08).toFixed(3),
-                    co2: (Math.random() * 300 + 900).toFixed(0),
-                    status: i % 8 === 0 ? 'Buruk' : (i % 4 === 0 ? 'Normal' : 'Bersih'),
-                });
-            }
-            return logs.reverse(); 
-        }
-
-        function generateSimulatedDailyRecap(count = DAILY_RECAP_COUNT) {
-            // ... (kode simulasi yang sama) ...
-            const logs = [];
-            let now = new Date();
-            for (let i = count - 1; i >= 0; i--) {
-                const date = new Date(now);
-                date.setDate(now.getDate() - i);
-                logs.push({
-                    timestamp: date.toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short' }),
-                    suhu: (Math.random() * 2 + 27).toFixed(1), 
-                    kelembaban: (Math.random() * 5 + 70).toFixed(1),
-                    debu: (Math.random() * 0.03 + 0.1).toFixed(3),
-                    co2: (Math.random() * 200 + 1000).toFixed(0),
-                    status: i === 0 ? 'Normal' : (i % 3 === 0 ? 'Buruk' : 'Bersih'),
-                });
-            }
-            return logs;
-        }
-
-        function generateSimulatedMonthlyRecap(count = MONTHLY_RECAP_COUNT) {
-            // ... (kode simulasi yang sama) ...
-            const logs = [];
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-            let now = new Date();
-            const currentMonth = now.getMonth();
-            
-            for (let i = 0; i < count; i++) {
-                const monthIndex = (currentMonth - i + 12) % 12;
-                logs.push({
-                    timestamp: monthNames[monthIndex] + " " + now.getFullYear(),
-                    suhu: (Math.random() * 1 + 28).toFixed(1), 
-                    kelembaban: (Math.random() * 8 + 65).toFixed(1),
-                    debu: (Math.random() * 0.01 + 0.12).toFixed(3),
-                    co2: (Math.random() * 100 + 1100).toFixed(0),
-                    status: i % 4 === 0 ? 'Buruk' : 'Bersih',
-                });
-            }
-            return logs.reverse(); 
-        }
-        
-        function getLogData(period) {
-            switch (period) {
-                case 'minute': return generateSimulatedMinuteLog(LOG_ENTRY_COUNT);
-                case 'hourly': return generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT);
-                case 'daily': return generateSimulatedDailyRecap(DAILY_RECAP_COUNT);
-                case 'monthly': return generateSimulatedMonthlyRecap(MONTHLY_RECAP_COUNT);
-                default: return [];
-            }
-        }
-
-        function setRecapPeriod(period) {
-            currentRecapPeriod = period;
-            
-            const periodTitle = period === 'minute' ? 'Per Menit' : 
-                                 period === 'hourly' ? 'Per Jam' :
-                                 period === 'daily' ? 'Per Hari' : 'Per Bulan';
-            document.getElementById('recap-title').textContent = `Rekap Data (${periodTitle})`;
-            
-            renderLogTable();
-            
-            const count = period === 'minute' ? LOG_ENTRY_COUNT :
-                          period === 'hourly' ? HOURLY_RECAP_COUNT :
-                          period === 'daily' ? DAILY_RECAP_COUNT : MONTHLY_RECAP_COUNT;
-
-            document.getElementById('download-csv-span').textContent = `Download CSV (${count} Entri)`;
-            
-            const buttons = document.querySelectorAll('#recap-period-nav button');
-            buttons.forEach(btn => {
-                if (btn.dataset.period === period) {
-                    btn.classList.replace('bg-gray-700', 'bg-blue-600');
-                    btn.classList.replace('hover:bg-gray-600', 'hover:bg-blue-700');
-                    btn.classList.remove('text-gray-300');
-                    btn.classList.add('text-white');
-                } else {
-                    btn.classList.replace('bg-blue-600', 'bg-gray-700');
-                    btn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-600');
-                    btn.classList.remove('text-white');
-                    btn.classList.add('text-gray-300');
-                }
-            });
-        }
-        
-        function renderLogTable() {
-            const logData = getLogData(currentRecapPeriod); 
-            const tableBody = document.getElementById('log-table-body');
-            const tableHeader = document.getElementById('log-table-header');
-
-            const periodLabel = currentRecapPeriod === 'minute' ? 'Per Menit' : 
-                                 currentRecapPeriod === 'hourly' ? 'Per Jam' :
-                                 currentRecapPeriod === 'daily' ? 'Per Hari' : 'Per Bulan';
-
-            tableHeader.querySelector('#timestamp-header').textContent = `Waktu (${periodLabel})`;
-            
-            let html = '';
-            logData.forEach((log, index) => {
-                const statusTextColor = getStatusColor(log.status).replace('bg-', 'text-'); 
-                
-                html += `
-                    <tr class="hover:bg-gray-700 transition duration-150 ${index % 2 === 0 ? 'bg-gray-800/50' : 'bg-gray-900/50'}">
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-400">${log.timestamp}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm font-medium text-red-400">${log.suhu} ${SENSOR_LABELS.suhu.unit.trim()}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-blue-400">${log.kelembaban} ${SENSOR_LABELS.kelembaban.unit.trim()}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-yellow-400">${log.debu} ${SENSOR_LABELS.debu.unit.trim()}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm text-green-400">${log.co2} ${SENSOR_LABELS.co2.unit.trim()}</td>
-                        <td class="px-6 py-3 whitespace-nowrap text-sm font-bold ${statusTextColor}">${log.status}</td>
-                    </tr>
-                `;
-            });
-            
-            if (logData.length === 0) {
-                 html = `<tr><td colspan="6" class="p-6 text-center text-gray-500">Tidak ada data rekap untuk periode ini.</td></tr>`;
-            }
-
-            tableBody.innerHTML = html;
-        }
-        
-        // --- FETCH AND RENDER LOGS (TRENDS) ---
-        async function fetchAndRenderTrends() {
-            
-            document.getElementById('loading-message').classList.add('hidden'); // Sembunyikan pesan loading
-            document.getElementById('trends-container').classList.remove('hidden'); // Tampilkan container grafik
-
-            Chart.defaults.color = '#e5e7eb'; 
-            Chart.defaults.borderColor = 'rgba(107, 114, 128, 0.5)'; 
-
-            // ===================================
-            // 1. MINUTE TRENDS (Tren Per Menit - 60 Menit Terakhir)
-            // ===================================
-            const simulatedMinuteRecap = generateSimulatedMinuteLog(LOG_ENTRY_COUNT);
-            const minuteLabels = simulatedMinuteRecap.map((log, i) => (i % 5 === 0 ? log.timestamp.substring(9,14) : '')); 
-            
-            const simulatedMinuteData = {
-                suhu: { values: simulatedMinuteRecap.map(log => log.suhu) },
-                kelembaban: { values: simulatedMinuteRecap.map(log => log.kelembaban) },
-                debu: { values: simulatedMinuteRecap.map(log => log.debu) },
-                co2: { values: simulatedMinuteRecap.map(log => log.co2) }
-            };
-            
-            document.getElementById('minute-trends-container').innerHTML = `
-                <div class="w-full p-4">
-                    <div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700">
-                        <h3 class="text-lg font-bold text-gray-200 mb-4">Tren Per Menit (60 Menit Terakhir) - Semua Sensor</h3>
-                        <canvas id="combined-minute-chart"></canvas>
-                    </div>
-                </div>
-            `;
-
-            const combinedMinuteDatasets = SENSORS.map(key => ({
-                label: SENSOR_LABELS[key].label.split('(')[0].trim(),
-                data: simulatedMinuteData[key].values,
-                borderColor: SENSOR_LABELS[key].color,
-                backgroundColor: SENSOR_LABELS[key].color.replace('rgb', 'rgba').replace(')', ', 0.0)'),
-                fill: false, 
-                tension: 0.2
-            }));
-
-            const ctxMinute = document.getElementById('combined-minute-chart').getContext('2d');
-            new Chart(ctxMinute, {
-                type: 'line', 
-                data: {
-                    labels: minuteLabels,
-                    datasets: combinedMinuteDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: 'rgba(107, 114, 128, 0.3)' } },
-                        x: { 
-                            grid: { color: 'rgba(107, 114, 128, 0.3)' },
-                            ticks: { autoSkip: true, maxRotation: 0, minRotation: 0, font: { size: 10 } }
-                        }
-                    },
-                    plugins: { 
-                        legend: { 
-                            display: true, 
-                            labels: { color: '#e5e7eb' }
-                        },
-                        tooltip: {
-                             callbacks: {
-                                 label: function(context) {
-                                     let label = context.dataset.label || '';
-                                     if (label) {
-                                         label += ': ';
-                                     }
-                                     if (context.parsed.y !== null) {
-                                         // Mengambil unit dari SENSOR_LABELS berdasarkan label
-                                         const sensorKey = SENSORS.find(k => SENSOR_LABELS[k].label.includes(context.dataset.label));
-                                         const unit = sensorKey ? SENSOR_LABELS[sensorKey].unit.trim() : '';
-                                         // Mengambil presisi yang benar
-                                         const precision = sensorKey === 'debu' ? 3 : 1; 
-                                         label += context.parsed.y.toFixed(precision) + unit;
-                                     }
-                                     return label;
-                                 }
-                             }
-                        }
-                    }
-                }
-            });
-
-
-            // ===================================
-            // 2. HOURLY TRENDS (Tren Per Jam - 24 Jam Terakhir) 
-            // ===================================
-            const hourlyRecapData = generateSimulatedHourlyRecap(HOURLY_RECAP_COUNT);
-            const hourlyLabels = hourlyRecapData.map(log => log.timestamp);
-            
-            const simulatedHourlyData = {
-                suhu: { values: hourlyRecapData.map(log => log.suhu) },
-                kelembaban: { values: hourlyRecapData.map(log => log.kelembaban) },
-                debu: { values: hourlyRecapData.map(log => log.debu) },
-                co2: { values: hourlyRecapData.map(log => log.co2) }
-            };
-            
-            document.getElementById('hourly-trends-container').innerHTML = `
-                <div class="w-full p-4">
-                    <div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700">
-                        <h3 class="text-lg font-bold text-gray-200 mb-4">Tren Per Jam (24 Jam Terakhir) - Semua Sensor</h3>
-                        <canvas id="combined-hourly-chart"></canvas>
-                    </div>
-                </div>
-            `;
-
-            const combinedHourlyDatasets = SENSORS.map(key => ({
-                label: SENSOR_LABELS[key].label.split('(')[0].trim(),
-                data: simulatedHourlyData[key].values,
-                borderColor: SENSOR_LABELS[key].color,
-                backgroundColor: SENSOR_LABELS[key].color.replace('rgb', 'rgba').replace(')', ', 0.0)'),
-                fill: false, 
-                tension: 0.2
-            }));
-
-            const ctxHourly = document.getElementById('combined-hourly-chart').getContext('2d');
-            new Chart(ctxHourly, {
-                type: 'line', 
-                data: {
-                    labels: hourlyLabels,
-                    datasets: combinedHourlyDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: 'rgba(107, 114, 128, 0.3)' } },
-                        x: { grid: { color: 'rgba(107, 114, 128, 0.3)' } }
-                    },
-                    plugins: { 
-                        legend: { 
-                            display: true, 
-                            labels: { color: '#e5e7eb' }
-                        },
-                        tooltip: {
-                             callbacks: {
-                                 label: function(context) {
-                                     let label = context.dataset.label || '';
-                                     if (label) {
-                                         label += ': ';
-                                     }
-                                     if (context.parsed.y !== null) {
-                                         const sensorKey = SENSORS.find(k => SENSOR_LABELS[k].label.includes(context.dataset.label));
-                                         const unit = sensorKey ? SENSOR_LABELS[sensorKey].unit.trim() : '';
-                                         const precision = sensorKey === 'debu' ? 3 : 1;
-                                         label += context.parsed.y.toFixed(precision) + unit;
-                                     }
-                                     return label;
-                                 }
-                             }
-                        } 
-                    }
-                }
-            });
-
-            // ===================================
-            // 3. DAILY TRENDS (Tren Harian - 7 Hari Terakhir)
-            // ===================================
-            const dailyRecapData = generateSimulatedDailyRecap(DAILY_RECAP_COUNT);
-            const dailyLabels = dailyRecapData.map(log => log.timestamp);
-
-            const simulatedDailyData = {
-                suhu: { values: dailyRecapData.map(log => log.suhu) },
-                kelembaban: { values: dailyRecapData.map(log => log.kelembaban) },
-                debu: { values: dailyRecapData.map(log => log.debu) },
-                co2: { values: dailyRecapData.map(log => log.co2) }
-            };
-
-            document.getElementById('daily-trends-container').innerHTML = `
-                <div class="w-full p-4">
-                    <div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700">
-                        <h3 class="text-lg font-bold text-gray-200 mb-4">Tren Harian (7 Hari Terakhir) - Semua Sensor</h3>
-                        <canvas id="combined-daily-chart"></canvas>
-                    </div>
-                </div>
-            `;
-
-            const combinedDailyDatasets = SENSORS.map(key => ({
-                label: SENSOR_LABELS[key].label.split('(')[0].trim(),
-                data: simulatedDailyData[key].values,
-                borderColor: SENSOR_LABELS[key].color,
-                backgroundColor: SENSOR_LABELS[key].color.replace('rgb', 'rgba').replace(')', ', 0.0)'), 
-                fill: false, 
-                tension: 0.2
-            }));
-
-            const ctxDaily = document.getElementById('combined-daily-chart').getContext('2d');
-            new Chart(ctxDaily, {
-                type: 'line', 
-                data: {
-                    labels: dailyLabels,
-                    datasets: combinedDailyDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { 
-                            beginAtZero: false,
-                            grid: { color: 'rgba(107, 114, 128, 0.3)' } 
-                        },
-                        x: {
-                            grid: { color: 'rgba(107, 114, 128, 0.3)' }
-                        }
-                    },
-                    plugins: { 
-                        legend: { 
-                            display: true, 
-                            labels: {
-                                color: '#e5e7eb'
-                            }
-                        },
-                        tooltip: {
-                             callbacks: {
-                                 label: function(context) {
-                                     let label = context.dataset.label || '';
-                                     if (label) {
-                                         label += ': ';
-                                     }
-                                     if (context.parsed.y !== null) {
-                                         const sensorKey = SENSORS.find(k => SENSOR_LABELS[k].label.includes(context.dataset.label));
-                                         const unit = sensorKey ? SENSOR_LABELS[sensorKey].unit.trim() : '';
-                                         const precision = sensorKey === 'debu' ? 3 : 1;
-                                         label += context.parsed.y.toFixed(precision) + unit;
-                                     }
-                                     return label;
-                                 }
-                             }
-                        } 
-                    }
-                }
-            });
-
-            // ===================================
-            // 4. MONTHLY TRENDS (Tren Bulanan - 12 Bulan Terakhir)
-            // ===================================
-            const monthlyRecapData = generateSimulatedMonthlyRecap(MONTHLY_RECAP_COUNT);
-            const monthlyLabels = monthlyRecapData.map(log => log.timestamp); 
-            
-            const simulatedMonthlyData = {
-                suhu: { values: monthlyRecapData.map(log => log.suhu) },
-                kelembaban: { values: monthlyRecapData.map(log => log.kelembaban) },
-                debu: { values: monthlyRecapData.map(log => log.debu) },
-                co2: { values: monthlyRecapData.map(log => log.co2) }
-            };
-
-            document.getElementById('monthly-trends-container').innerHTML = `
-                <div class="w-full p-4">
-                    <div class="bg-gray-800 rounded-xl shadow-lg p-4 h-96 border border-gray-700">
-                        <h3 class="text-lg font-bold text-gray-200 mb-4">Tren Bulanan (12 Bulan Terakhir) - Semua Sensor</h3>
-                        <canvas id="combined-monthly-chart"></canvas>
-                    </div>
-                </div>
-            `;
-
-            const combinedMonthlyDatasets = SENSORS.map(key => ({
-                label: SENSOR_LABELS[key].label.split('(')[0].trim(),
-                data: simulatedMonthlyData[key].values,
-                borderColor: SENSOR_LABELS[key].color,
-                backgroundColor: SENSOR_LABELS[key].color.replace('rgb', 'rgba').replace(')', ', 0.6)'), 
-                fill: false,
-                tension: 0.2
-            }));
-
-            const ctxMonthly = document.getElementById('combined-monthly-chart').getContext('2d');
-            new Chart(ctxMonthly, {
-                type: 'bar', // Menggunakan Bar Chart
-                data: {
-                    labels: monthlyLabels,
-                    datasets: combinedMonthlyDatasets
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: false, grid: { color: 'rgba(107, 114, 128, 0.3)' } },
-                        x: { grid: { color: 'rgba(107, 114, 128, 0.3)' } }
-                    },
-                    plugins: { 
-                        legend: { 
-                            display: true, 
-                            labels: { color: '#e5e7eb' }
-                        },
-                        tooltip: {
-                             callbacks: {
-                                 label: function(context) {
-                                     let label = context.dataset.label || '';
-                                     if (label) {
-                                         label += ': ';
-                                     }
-                                     if (context.parsed.y !== null) {
-                                         const sensorKey = SENSORS.find(k => SENSOR_LABELS[k].label.includes(context.dataset.label));
-                                         const unit = sensorKey ? SENSOR_LABELS[sensorKey].unit.trim() : '';
-                                         const precision = sensorKey === 'debu' ? 3 : 1;
-                                         label += context.parsed.y.toFixed(precision) + unit;
-                                     }
-                                     return label;
-                                 }
-                             }
-                        } 
-                    }
-                }
-            });
-            
-            // Kode yang terpotong di sini, diperbaiki dengan fungsi lengkap:
-            
-            // Render ulang tabel rekap di latar belakang agar siap ketika tombol diklik
-            renderLogTable(); 
-        }
-
-        // ==========================================
-        // 5. INITIALIZATION
-        // ==========================================
-        function initApp() {
-            try {
-                // Inisialisasi Firebase App
-                app = firebase.initializeApp(firebaseConfig);
-                db = app.database();
-
-                // 1. Inisialisasi Spidometer (Gauge)
-                initializeGauges(); 
-
-                // 2. Mulai mendengarkan data realtime (Gauge)
-                listenForCurrentStatus();
-
-                // 3. Render grafik tren dan sembunyikan pesan loading
-                fetchAndRenderTrends();
-                
-                // 4. Hubungkan event listener untuk navigasi
-                document.getElementById('nav-dashboard').addEventListener('click', () => switchView('dashboard'));
-                document.getElementById('nav-recap').addEventListener('click', () => switchView('recap'));
-                document.getElementById('download-csv-btn').addEventListener('click', downloadLogAsCSV);
-
-                // 5. Set tampilan awal
-                switchView('dashboard');
-            } catch (error) {
-                console.error("Gagal menginisialisasi aplikasi. Cek konfigurasi Firebase.", error);
-                document.getElementById('iaq-status').innerHTML = '<p class="text-xl text-red-500 font-bold">ERROR: Gagal terhubung ke Firebase. Cek Console (F12).</p>';
-                document.getElementById('last-updated-time').innerHTML = '';
-            }
-        }
-
-        // Panggil initApp setelah DOM dimuat
-        window.onload = initApp;
-
-    </script>
 </head>
+<body class="p-4">
 
-<body class="bg-[#0d1117] min-h-screen text-gray-200">
+<h1 class="text-3xl font-bold mb-4">Dashboard Kualitas Udara</h1>
 
-    <header class="bg-gray-900 border-b border-gray-700 py-6">
-        <div class="container mx-auto px-4 text-center">
-            <h1 class="text-4xl font-extrabold text-white mb-4">IAQ Monitoring Dashboard</h1>
-            <nav class="flex justify-center space-x-4">
-                <button id="nav-dashboard" class="px-6 py-2 rounded-full font-semibold transition duration-300 bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                    Dashboard Realtime
-                </button>
-                <button id="nav-recap" class="px-6 py-2 rounded-full font-semibold transition duration-300 bg-gray-700 hover:bg-gray-600 text-gray-300">
-                    Rekap Data (Per Menit)
-                </button>
-            </nav>
-        </div>
-    </header>
+<div id="iaq-status" class="p-4 text-center text-white rounded-xl mb-6 bg-gray-700">
+    Memuat status...
+</div>
 
-    <main class="container mx-auto px-4 py-8">
+<div id="last-updated-time" class="text-center text-gray-400 mb-6"></div>
 
-        <section id="dashboard-section" class="space-y-8">
-            
-            <div id="iaq-status" class="p-4 text-white font-bold rounded-xl shadow-xl text-center mb-4 bg-gray-600">
-                Memuat Status...
-            </div>
-            
-            <div id="last-updated-time" class="text-center">
-                Memuat waktu pembaruan...
-            </div>
+<!-- Gauge Section -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-10">
+    <div class="gauge-container text-center">
+        <canvas id="gauge-suhu"></canvas>
+    </div>
+    <div class="gauge-container text-center">
+        <canvas id="gauge-kelembaban"></canvas>
+    </div>
+    <div class="gauge-container text-center">
+        <canvas id="gauge-debu"></canvas>
+    </div>
+    <div class="gauge-container text-center">
+        <canvas id="gauge-co2"></canvas>
+    </div>
+</div>
 
-            <h2 class="text-2xl font-bold text-gray-200 mt-8 mb-4">Data Realtime (Spidometer)</h2>
-            <div id="gauge-container" class="grid grid-cols-2 lg:grid-cols-4 gap-6 p-4 rounded-xl bg-gray-900 border border-gray-700 shadow-inner">
-                
-                <div class="p-2 bg-gray-800 rounded-xl shadow-md border border-gray-700 flex flex-col items-center">
-                    <h3 class="text-sm text-gray-400 text-center mb-1">Temperature (°C)</h3>
-                    <canvas id="gauge-suhu" class="gauge-container h-32 w-full"></canvas>
-                    </div>
-                
-                <div class="p-2 bg-gray-800 rounded-xl shadow-md border border-gray-700 flex flex-col items-center">
-                    <h3 class="text-sm text-gray-400 text-center mb-1">Humidity (%)</h3>
-                    <canvas id="gauge-kelembaban" class="gauge-container h-32 w-full"></canvas>
-                </div>
-                
-                <div class="p-2 bg-gray-800 rounded-xl shadow-md border border-gray-700 flex flex-col items-center">
-                    <h3 class="text-sm text-gray-400 text-center mb-1">Dust (mg/m³)</h3>
-                    <canvas id="gauge-debu" class="gauge-container h-32 w-full"></canvas>
-                </div>
-                
-                <div class="p-2 bg-gray-800 rounded-xl shadow-md border border-gray-700 flex flex-col items-center">
-                    <h3 class="text-sm text-gray-400 text-center mb-1">CO2 (ppm)</h3>
-                    <canvas id="gauge-co2" class="gauge-container h-32 w-full"></canvas>
-                </div>
-            </div>
+<!-- Grafik -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+    <canvas id="suhu-chart"></canvas>
+    <canvas id="kelembaban-chart"></canvas>
+    <canvas id="debu-chart"></canvas>
+    <canvas id="co2-chart"></canvas>
+</div>
 
-            <h2 class="text-2xl font-bold text-gray-200 mt-12 mb-4">Tren Data Sensor</h2>
+<!-- Tabel -->
+<h2 class="text-xl font-bold mb-2">Riwayat Per Menit</h2>
+<table class="w-full log-table">
+    <thead>
+        <tr>
+            <th>Waktu</th>
+            <th>Suhu</th>
+            <th>Kelembaban</th>
+            <th>Debu</th>
+            <th>CO₂</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody id="minute-log-body"></tbody>
+</table>
 
-            <div id="loading-message" class="text-center p-8 bg-gray-900 rounded-xl border border-gray-700">
-                <p class="text-lg text-blue-400">Memuat data log dan menghitung tren (simulasi untuk demo)...</p>
-                <p class="text-sm text-gray-500 mt-2">Pastikan konfigurasi Firebase Anda sudah benar.</p>
-            </div>
+<script>
+// ------------------ Konfigurasi ------------------
+const SENSORS = ["suhu", "kelembaban", "debu", "co2"];
+const SENSOR_LABELS = {
+    suhu: { label: "Suhu", unit: "°C" },
+    kelembaban: { label: "Kelembaban", unit: "%" },
+    debu: { label: "Debu", unit: " mg/m³" },
+    co2: { label: "CO₂", unit: " ppm" }
+};
 
-            <div id="trends-container" class="hidden space-y-8">
-                <div id="minute-trends-container" class="bg-gray-900 rounded-xl border border-gray-700 shadow-lg">
-                    </div>
+let gauges = {};
+let charts = {};
 
-                <div id="hourly-trends-container" class="bg-gray-900 rounded-xl border border-gray-700 shadow-lg">
-                    </div>
+// ------------------ Firebase ------------------
+const firebaseConfig = {
+    apiKey: "YOUR_KEY",
+    authDomain: "YOUR_DOMAIN",
+    databaseURL: "YOUR_DB_URL",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_STORAGE",
+    messagingSenderId: "YOUR_MSG_ID",
+    appId: "YOUR_APP_ID"
+};
 
-                <div id="daily-trends-container" class="bg-gray-900 rounded-xl border border-gray-700 shadow-lg">
-                    </div>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-                <div id="monthly-trends-container" class="bg-gray-900 rounded-xl border border-gray-700 shadow-lg">
-                    </div>
-            </div>
+// ------------------ Simulasi Data ------------------
+function generateSimulatedMinuteLog(total = 60) {
+    const logs = [];
+    const now = new Date();
+    for (let i = 0; i < total; i++) {
+        const t = new Date(now.getTime() - i * 60000);
+        logs.push({
+            timestamp: t.toLocaleTimeString("id-ID"),
+            suhu: Number((Math.random() * 5 + 20).toFixed(1)),
+            kelembaban: Number((Math.random() * 10 + 70).toFixed(1)),
+            debu: Number((Math.random() * 0.1 + 0.05).toFixed(3)),
+            co2: Number((Math.random() * 500 + 800).toFixed(0)),
+            status: "Normal"
+        });
+    }
+    return logs.reverse();
+}
 
-        </section>
+// ------------------ Gauge ------------------
+function createGauge(id, maxValue) {
+    const opts = { angle: -0.2, lineWidth: 0.2, radiusScale: 1, pointer: { length: 0.6, strokeWidth: 4 }, limitMax: false, limitMin: false, highDpiSupport: true };
+    const target = document.getElementById(id);
+    const gauge = new Gauge(target).setOptions(opts);
+    gauge.maxValue = maxValue;
+    gauge.setMinValue(0);
+    gauge.set(0);
+    return gauge;
+}
 
+function initGauges() {
+    gauges.suhu = createGauge("gauge-suhu", 50);
+    gauges.kelembaban = createGauge("gauge-kelembaban", 100);
+    gauges.debu = createGauge("gauge-debu", 1);
+    gauges.co2 = createGauge("gauge-co2", 2000);
+}
 
-        <section id="recap-section" class="hidden space-y-6">
-            <h2 id="recap-title" class="text-2xl font-bold text-gray-200">Rekap Data (Per Menit)</h2>
+// ------------------ Chart ------------------
+function createChart(id, label) {
+    const ctx = document.getElementById(id).getContext("2d");
+    return new Chart(ctx, {
+        type: "line",
+        data: { labels: [], datasets: [{ label, data: [], borderWidth: 2 }] },
+        options: { responsive: true, plugins: { legend: { labels: { color: "white" } } }, scales: { x: { ticks: { color: "white" } }, y: { ticks: { color: "white" } } } }
+    });
+}
 
-            <div id="recap-period-nav" class="flex flex-wrap gap-3 p-4 bg-gray-900 rounded-xl border border-gray-700 shadow-inner">
-                <button data-period="minute" onclick="setRecapPeriod('minute')" class="px-4 py-2 rounded-full font-medium text-sm bg-blue-600 hover:bg-blue-700 text-white">
-                    Per Menit (60 Entri)
-                </button>
-                <button data-period="hourly" onclick="setRecapPeriod('hourly')" class="px-4 py-2 rounded-full font-medium text-sm bg-gray-700 hover:bg-gray-600 text-gray-300">
-                    Per Jam (24 Entri)
-                </button>
-                <button data-period="daily" onclick="setRecapPeriod('daily')" class="px-4 py-2 rounded-full font-medium text-sm bg-gray-700 hover:bg-gray-600 text-gray-300">
-                    Per Hari (7 Entri)
-                </button>
-                <button data-period="monthly" onclick="setRecapPeriod('monthly')" class="px-4 py-2 rounded-full font-medium text-sm bg-gray-700 hover:bg-gray-600 text-gray-300">
-                    Per Bulan (12 Entri)
-                </button>
-                <button id="download-csv-btn" class="ml-auto px-4 py-2 rounded-full font-medium text-sm bg-green-600 hover:bg-green-700 text-white transition duration-300 shadow-lg">
-                    <span id="download-csv-span">Download CSV (60 Entri)</span>
-                </button>
-            </div>
+function initCharts() {
+    charts.suhu = createChart("suhu-chart", "Suhu");
+    charts.kelembaban = createChart("kelembaban-chart", "Kelembaban");
+    charts.debu = createChart("debu-chart", "Debu");
+    charts.co2 = createChart("co2-chart", "CO₂");
+}
 
-            <div class="bg-gray-800 rounded-xl shadow-lg overflow-x-auto border border-gray-700">
-                <table class="min-w-full divide-y divide-gray-700 log-table">
-                    <thead class="bg-gray-700">
-                        <tr id="log-table-header">
-                            <th id="timestamp-header" class="log-table th">Waktu (Per Menit)</th>
-                            <th class="log-table th">Suhu (C)</th>
-                            <th class="log-table th">Kelembaban (%)</th>
-                            <th class="log-table th">Debu (mg/m³)</th>
-                            <th class="log-table th">CO2 (ppm)</th>
-                            <th class="log-table th">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody id="log-table-body" class="bg-gray-800 divide-y divide-gray-700">
-                        <tr><td colspan="6" class="p-6 text-center text-gray-500">Memuat data rekap...</td></tr>
-                    </tbody>
-                </table>
-            </div>
+// ------------------ Load Simulasi ------------------
+function loadMinuteTable(logs) {
+    const tbody = document.getElementById("minute-log-body");
+    tbody.innerHTML = "";
+    logs.forEach(row => {
+        tbody.innerHTML += `
+            <tr>
+                <td>${row.timestamp}</td>
+                <td>${row.suhu}°C</td>
+                <td>${row.kelembaban}%</td>
+                <td>${row.debu} mg/m³</td>
+                <td>${row.co2} ppm</td>
+                <td>${row.status}</td>
+            </tr>`;
+    });
+}
 
-        </section>
+// ------------------ Realtime Firebase ------------------
+function listenForRealtime() {
+    const ref = db.ref("/IAQ");
 
-    </main>
+    ref.on("value", snap => {
+        const data = snap.val();
+        if (!data) return;
 
-    <footer class="text-center py-4 text-xs text-gray-600 border-t border-gray-800 mt-8">
-        &copy; 2025 IAQ Monitoring System. Powered by ESP32 & Firebase.
-    </footer>
+        // Status Box
+        const statusDiv = document.getElementById("iaq-status");
+        statusDiv.textContent = data.status || "UNKNOWN";
+        statusDiv.style.backgroundColor = data.status === "Buruk" ? "#dc2626" : (data.status === "Normal" ? "#facc15" : "#16a34a");
 
+        document.getElementById("last-updated-time").innerHTML =
+            `<strong>${new Date().toLocaleString("id-ID")}</strong>`;
+
+        // Update Gauge + Chart
+        SENSORS.forEach(key => {
+            const val = Number(data[key]) || 0;
+            if (gauges[key]) gauges[key].set(val);
+            if (charts[key]) {
+                const c = charts[key];
+                c.data.labels.push("");
+                c.data.datasets[0].data.push(val);
+                if (c.data.datasets[0].data.length > 60) {
+                    c.data.labels.shift();
+                    c.data.datasets[0].data.shift();
+                }
+                c.update();
+            }
+        });
+    });
+
+    window.addEventListener("beforeunload", () => ref.off());
+}
+
+// ------------------ Init ------------------
+function initApp() {
+    initGauges();
+    initCharts();
+
+    const simulatedLogs = generateSimulatedMinuteLog();
+    loadMinuteTable(simulatedLogs);
+
+    listenForRealtime();
+}
+
+window.onload = initApp;
+</script>
+
+  <!-- Firebase SDK (Modular v9+) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+    import { getDatabase, ref, onValue } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-database.js";
+
+    // TODO: Ganti dengan konfigurasi Firebase asli kamu
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const sensorRef = ref(db, "IAQ");
+
+    onValue(sensorRef, (snapshot) => {
+      const data = snapshot.val();
+      console.log(data);
+      // TODO: Update UI sesuai data
+    });
+  </script>
 </body>
 </html>
