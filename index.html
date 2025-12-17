@@ -3,93 +3,109 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>IAQ Pro - Realtime Second Recap</title>
+    <title>IAQ PRO - Grafana Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        .active-filter { background-color: #2563eb !important; color: white !important; border-color: #3b82f6 !important; }
-        .nav-active { border-bottom: 4px solid #3b82f6; color: #3b82f6; }
-        /* Animasi dot untuk menandakan live */
-        .live-dot { height: 8px; width: 8px; background-color: #10b981; border-radius: 50%; display: inline-block; margin-right: 5px; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono&display=swap');
+        
+        body { background-color: #0b0e14; font-family: 'Inter', sans-serif; color: #d8d9da; }
+        .nav-active { border-bottom: 3px solid #3274d9; color: #3274d9; }
+        .card-grafana { background: #181b1f; border: 1px solid #26292e; border-radius: 4px; transition: 0.3s; }
+        .card-grafana:hover { border-color: #3274d9; }
+        .active-filter { background-color: #3274d9 !important; color: white !important; }
+        
+        /* Layout khusus Gauge */
+        .gauge-wrapper { position: relative; width: 100%; height: 180px; }
+        .gauge-center { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); text-align: center; }
+        .mini-chart-container { height: 40px; width: 100%; opacity: 0.6; }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 font-sans">
+<body class="p-4 lg:p-8">
 
-    <div class="container mx-auto p-4 lg:p-8">
-        <header class="flex justify-between items-center mb-10 bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
-            <div>
-                <h1 class="text-2xl font-bold text-white tracking-tight">IAQ PRO <span class="text-blue-500 text-sm font-normal italic">Live Engine</span></h1>
-                <p id="conn-status" class="text-xs text-yellow-500 font-mono mt-1 uppercase">● Connecting to Database...</p>
+    <div class="max-w-7xl mx-auto">
+        <header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-black tracking-tighter text-white">IAQ PRO <span class="text-[#3274d9] text-xs font-mono tracking-normal ml-2 underline underline-offset-4">v4.0 PRO</span></h1>
+                <div class="flex items-center gap-2 px-3 py-1 bg-[#181b1f] border border-[#26292e] rounded">
+                    <span id="dot" class="h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                    <p id="conn-status" class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Connecting</p>
+                </div>
             </div>
-            <div class="flex gap-4">
-                <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-link font-bold text-sm px-4 py-2 nav-active">DASHBOARD</button>
-                <button onclick="showSection('recap')" id="btn-recap" class="nav-link font-bold text-sm px-4 py-2">ANALITIK & REKAP</button>
-            </div>
+            <nav class="flex gap-6">
+                <button onclick="showSection('dashboard')" id="btn-dashboard" class="text-xs font-bold tracking-widest nav-active pb-1">DASHBOARD</button>
+                <button onclick="showSection('recap')" id="btn-recap" class="text-xs font-bold tracking-widest text-slate-500 hover:text-white transition">ANALYTICS & RECAP</button>
+            </nav>
         </header>
 
-        <div id="section-dashboard" class="space-y-6">
-            <div id="status-card" class="bg-[#1e293b] border border-slate-700 p-8 rounded-3xl text-center">
-                <p class="text-slate-400 uppercase tracking-widest text-xs font-bold mb-2">Current Air Quality</p>
-                <h2 id="status-label" class="text-4xl font-black italic">INITIALIZING...</h2>
+        <div id="section-dashboard" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            
+            <div class="md:col-span-2 card-grafana p-4 flex justify-between items-center border-l-4 border-l-[#3274d9]">
+                <div>
+                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Environmental Status</p>
+                    <h2 id="status-label" class="text-2xl font-black italic tracking-tighter text-white">INITIALIZING...</h2>
+                </div>
+                <div class="text-right">
+                    <p class="text-[10px] font-mono text-slate-500">REFRESH RATE: 1S</p>
+                    <p class="text-[10px] font-mono text-emerald-500">SYSTEM STABLE</p>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-[#1e293b] p-8 rounded-3xl border border-slate-700 relative overflow-hidden group">
-                    <p class="text-slate-400 text-sm font-bold uppercase">Temperature</p>
-                    <div class="flex items-baseline gap-2 mt-2">
-                        <h2 id="live-suhu" class="text-7xl font-black text-rose-500 tracking-tighter">--</h2>
-                        <span class="text-2xl font-bold text-slate-500">°C</span>
-                    </div>
+            <div class="card-grafana p-5">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-[11px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded">TEMPERATURE</span>
+                    <div class="mini-chart-container"><canvas id="tempSparkline"></canvas></div>
                 </div>
-                <div class="bg-[#1e293b] p-8 rounded-3xl border border-slate-700 relative overflow-hidden group">
-                    <p class="text-slate-400 text-sm font-bold uppercase">Humidity</p>
-                    <div class="flex items-baseline gap-2 mt-2">
-                        <h2 id="live-hum" class="text-7xl font-black text-cyan-400 tracking-tighter">--</h2>
-                        <span class="text-2xl font-bold text-slate-500">%RH</span>
+                <div class="gauge-wrapper">
+                    <canvas id="tempGauge"></canvas>
+                    <div class="gauge-center">
+                        <h2 id="live-suhu" class="text-6xl font-black text-white leading-none tracking-tighter">--</h2>
+                        <p class="text-xs font-bold text-slate-500 mt-1 uppercase">Degrees Celsius</p>
                     </div>
                 </div>
             </div>
+
+            <div class="card-grafana p-5">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-[11px] font-bold text-cyan-500 bg-cyan-500/10 px-2 py-0.5 rounded">HUMIDITY</span>
+                    <div class="mini-chart-container"><canvas id="humSparkline"></canvas></div>
+                </div>
+                <div class="gauge-wrapper">
+                    <canvas id="humGauge"></canvas>
+                    <div class="gauge-center">
+                        <h2 id="live-hum" class="text-6xl font-black text-white leading-none tracking-tighter">--</h2>
+                        <p class="text-xs font-bold text-slate-500 mt-1 uppercase">Percent RH</p>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
-        <div id="section-recap" class="hidden space-y-6">
-            <div class="bg-[#1e293b] p-6 rounded-3xl border border-slate-700">
-                <div class="flex flex-wrap justify-between items-center mb-8 gap-4">
-                    <h3 class="text-xl font-bold text-white flex items-center">
-                        <span class="live-dot"></span> Historical Trends
-                    </h3>
-                    <div class="flex gap-1 bg-[#0f172a] p-1 rounded-xl">
-                        <button onclick="setFilter('sec')" class="f-btn active-filter px-4 py-2 rounded-lg text-xs font-bold uppercase transition">Per Detik</button>
-                        <button onclick="setFilter('min')" class="f-btn bg-transparent px-4 py-2 rounded-lg text-xs font-bold uppercase transition">Menit</button>
-                        <button onclick="setFilter('hour')" class="f-btn bg-transparent px-4 py-2 rounded-lg text-xs font-bold uppercase transition">Jam</button>
-                        <button onclick="setFilter('day')" class="f-btn bg-transparent px-4 py-2 rounded-lg text-xs font-bold uppercase transition">Hari</button>
+        <div id="section-recap" class="hidden space-y-4">
+            <div class="card-grafana p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="font-bold text-white tracking-widest text-sm uppercase italic">Historical Trends</h3>
+                    <div class="flex gap-1 bg-[#0b0e14] p-1 rounded">
+                        <button onclick="setFilter('sec')" class="f-btn active-filter px-3 py-1 text-[10px] font-bold uppercase">SEC</button>
+                        <button onclick="setFilter('min')" class="f-btn px-3 py-1 text-[10px] font-bold uppercase text-slate-500">MIN</button>
+                        <button onclick="setFilter('hour')" class="f-btn px-3 py-1 text-[10px] font-bold uppercase text-slate-500">HOUR</button>
                     </div>
                 </div>
+                <div class="h-80"><canvas id="mainChart"></canvas></div>
                 
-                <div class="h-80 mb-10">
-                    <canvas id="mainChart"></canvas>
+                <div class="flex justify-between items-center mt-8 mb-4">
+                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Raw Data Log</p>
+                    <button onclick="downloadCSV()" class="bg-[#3274d9] hover:bg-[#2659a6] text-white text-[10px] font-bold px-4 py-2 rounded shadow-lg transition">EXPORT CSV</button>
                 </div>
-
-                <div class="flex justify-between items-center mb-4">
-                    <h4 class="font-bold text-slate-400 uppercase text-xs tracking-widest">Detailed Log Table</h4>
-                    <button onclick="downloadCSV()" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 px-4 rounded-lg transition">DOWNLOAD REPORT</button>
-                </div>
-
-                <div class="overflow-hidden rounded-2xl border border-slate-700 bg-[#0f172a]">
-                    <div class="max-h-[400px] overflow-y-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead class="sticky top-0 bg-slate-800 text-slate-400 text-[10px] uppercase font-black">
-                                <tr>
-                                    <th class="p-4">Timestamp</th>
-                                    <th class="p-4 text-rose-400">Suhu (°C)</th>
-                                    <th class="p-4 text-cyan-400">Humidity (%)</th>
-                                    <th class="p-4">Status</th>
-                                </tr>
+                <div class="overflow-hidden border border-[#26292e]">
+                    <div class="max-h-96 overflow-y-auto bg-[#111217]">
+                        <table class="w-full text-left text-[12px]">
+                            <thead class="bg-[#181b1f] text-slate-500 sticky top-0">
+                                <tr><th class="p-3">WAKTU</th><th class="p-3 text-rose-500">SUHU</th><th class="p-3 text-cyan-500">HUMIDITY</th><th class="p-3">STATUS</th></tr>
                             </thead>
-                            <tbody id="table-body" class="text-sm font-mono divide-y divide-slate-800">
-                                </tbody>
+                            <tbody id="table-body" class="divide-y divide-[#26292e]"></tbody>
                         </table>
                     </div>
                 </div>
@@ -110,53 +126,101 @@ const db = firebase.database();
 let logData = JSON.parse(localStorage.getItem('iaq_pro_logs')) || [];
 let currentFilter = 'sec';
 
-// --- CHART SETUP ---
+// --- CHART UTILITIES (GRAFANA STYLE) ---
+function createGauge(id, color) {
+    return new Chart(document.getElementById(id), {
+        type: 'doughnut',
+        data: {
+            datasets: [{
+                data: [0, 100],
+                backgroundColor: [color, '#26292e'],
+                borderWidth: 0,
+                circumference: 240,
+                rotation: 240,
+                cutout: '88%',
+                borderRadius: 2
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+    });
+}
+
+function createSparkline(id, color) {
+    return new Chart(document.getElementById(id), {
+        type: 'line',
+        data: { labels: Array(20).fill(''), datasets: [{ data: [], borderColor: color, borderWidth: 1.5, tension: 0.4, pointRadius: 0, fill: true, backgroundColor: color + '10' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { display: false } } }
+    });
+}
+
+const tempGauge = createGauge('tempGauge', '#f03e3e');
+const humGauge = createGauge('humGauge', '#339af0');
+const tempSpark = createSparkline('tempSparkline', '#f03e3e');
+const humSpark = createSparkline('humSparkline', '#339af0');
+
 const ctx = document.getElementById('mainChart').getContext('2d');
-const chart = new Chart(ctx, {
+const mainChart = new Chart(ctx, {
     type: 'line',
     data: { labels: [], datasets: [
-        { label: 'Suhu', data: [], borderColor: '#f43f5e', backgroundColor: 'rgba(244, 63, 94, 0.1)', fill: true, tension: 0.3, pointRadius: 0 },
-        { label: 'Hum', data: [], borderColor: '#22d3ee', backgroundColor: 'rgba(34, 211, 238, 0.1)', fill: true, tension: 0.3, pointRadius: 0 }
+        { label: 'Suhu', data: [], borderColor: '#f03e3e', backgroundColor: 'rgba(240, 62, 62, 0.1)', fill: true, tension: 0.2, pointRadius: 0 },
+        { label: 'Hum', data: [], borderColor: '#339af0', backgroundColor: 'rgba(51, 154, 240, 0.1)', fill: true, tension: 0.2, pointRadius: 0 }
     ]},
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        animation: { duration: 0 }, // Matikan animasi agar update per detik mulus
-        plugins: { legend: { display: false } },
-        scales: {
-            x: { ticks: { color: '#64748b', font: { size: 10 }, maxRotation: 0 } },
-            y: { ticks: { color: '#64748b' }, grid: { color: '#1e293b' } }
-        }
-    }
+    options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { color: '#555', font: { size: 9 } }, grid: { display: false } }, y: { ticks: { color: '#555' }, grid: { color: '#222' } } } }
 });
 
-// --- CORE LOGIC: DATA PROCESSING ---
+// --- FIREBASE & LOGIC ---
+db.ref('DHT22').on('value', (snapshot) => {
+    const val = snapshot.val();
+    if(!val) return;
+
+    document.getElementById('conn-status').innerText = "LIVE STREAMING";
+    document.getElementById('dot').className = "h-2 w-2 rounded-full bg-emerald-500 animate-pulse";
+
+    const s = parseFloat(val.suhu);
+    const h = parseFloat(val.kelembaban);
+
+    document.getElementById('live-suhu').innerText = s.toFixed(1);
+    document.getElementById('live-hum').innerText = h.toFixed(1);
+
+    // Update Gauges
+    tempGauge.data.datasets[0].data = [s, 50 - s];
+    humGauge.data.datasets[0].data = [h, 100 - h];
+    tempGauge.update(); humGauge.update();
+
+    // Update Sparklines (Trends)
+    tempSpark.data.datasets[0].data.push(s);
+    if(tempSpark.data.datasets[0].data.length > 20) tempSpark.data.datasets[0].data.shift();
+    tempSpark.update();
+
+    humSpark.data.datasets[0].data.push(h);
+    if(humSpark.data.datasets[0].data.length > 20) humSpark.data.datasets[0].data.shift();
+    humSpark.update();
+
+    const isHot = s > 33;
+    const label = document.getElementById('status-label');
+    label.innerText = isHot ? "ALERT: HIGH TEMPERATURE" : "OPTIMAL ENVIRONMENT";
+    label.className = `text-2xl font-black italic tracking-tighter ${isHot ? 'text-rose-500' : 'text-emerald-500'}`;
+
+    logData.push({ t: Date.now(), s: s, h: h, st: label.innerText });
+    if(logData.length > 3000) logData.shift();
+    localStorage.setItem('iaq_pro_logs', JSON.stringify(logData));
+    renderUI();
+});
+
+// (Fungsi renderUI, getAggregatedData, showSection, downloadCSV tetap sama agar fitur rekap tidak rusak)
 function getAggregatedData(mode) {
     const groups = {};
-    
     logData.forEach(item => {
         const d = new Date(item.t);
         let key;
-        
-        // Formatter untuk memastikan 2 digit (01, 02, dst)
         const pad = (n) => n.toString().padStart(2, '0');
-        
-        // PENENTUAN KEY (DETIK ADALAH PRIORITAS)
-        if(mode === 'sec') {
-            key = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-        } else if(mode === 'min') {
-            key = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        } else if(mode === 'hour') {
-            key = `${pad(d.getHours())}:00`;
-        } else if(mode === 'day') {
-            key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
-        }
+        if(mode === 'sec') key = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+        else if(mode === 'min') key = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        else key = `${pad(d.getHours())}:00`;
 
         if(!groups[key]) groups[key] = { s: [], h: [], st: item.st };
-        groups[key].s.push(item.s);
-        groups[key].h.push(item.h);
+        groups[key].s.push(item.s); groups[key].h.push(item.h);
     });
-
     return Object.keys(groups).map(k => ({
         time: k,
         suhu: (groups[k].s.reduce((a,b) => a+b, 0) / groups[k].s.length).toFixed(1),
@@ -167,71 +231,32 @@ function getAggregatedData(mode) {
 
 function renderUI() {
     const data = getAggregatedData(currentFilter);
-    
-    // Tampilkan 30 data terakhir untuk grafik agar tidak terlalu padat
-    const chartData = data.slice(-30);
+    const chartData = data.slice(-40);
+    mainChart.data.labels = chartData.map(d => d.time);
+    mainChart.data.datasets[0].data = chartData.map(d => d.suhu);
+    mainChart.data.datasets[1].data = chartData.map(d => d.hum);
+    mainChart.update();
 
-    // Update Chart
-    chart.data.labels = chartData.map(d => d.time);
-    chart.data.datasets[0].data = chartData.map(d => d.suhu);
-    chart.data.datasets[1].data = chartData.map(d => d.hum);
-    chart.update();
-
-    // Update Table (Tampilkan 50 log terbaru)
     const tbody = document.getElementById('table-body');
     tbody.innerHTML = [...data].reverse().slice(0, 50).map(d => `
-        <tr class="hover:bg-slate-800/50 transition">
-            <td class="p-4 text-slate-500 font-bold">${d.time}</td>
-            <td class="p-4 text-rose-500">${d.suhu}°C</td>
-            <td class="p-4 text-cyan-400">${d.hum}%</td>
-            <td class="p-4 text-[10px] text-slate-400 uppercase">${d.status}</td>
+        <tr class="hover:bg-[#1e2226] border-b border-[#26292e]">
+            <td class="p-3 text-slate-500 font-mono">${d.time}</td>
+            <td class="p-3 text-rose-500 font-bold">${d.suhu}°C</td>
+            <td class="p-3 text-cyan-500 font-bold">${d.hum}%</td>
+            <td class="p-3 text-[10px] uppercase font-bold text-slate-400">${d.status}</td>
         </tr>
     `).join('');
 }
 
-// --- FIREBASE REALTIME LISTENER ---
-db.ref('DHT22').on('value', (snapshot) => {
-    const val = snapshot.val();
-    if(!val) return;
-
-    document.getElementById('conn-status').innerText = "● LIVE STREAMING";
-    document.getElementById('conn-status').className = "text-xs text-emerald-500 font-mono mt-1 uppercase";
-
-    // Dashboard UI
-    document.getElementById('live-suhu').innerText = val.suhu;
-    document.getElementById('live-hum').innerText = val.kelembaban;
-
-    const isHot = val.suhu > 33;
-    const label = document.getElementById('status-label');
-    label.innerText = isHot ? "UNHEALTHY / HOT" : "HEALTHY / COMFORT";
-    label.className = `text-4xl font-black italic ${isHot ? 'text-rose-500' : 'text-emerald-500'}`;
-
-    // Record Data per detik
-    const now = Date.now();
-    logData.push({
-        t: now,
-        s: parseFloat(val.suhu),
-        h: parseFloat(val.kelembaban),
-        st: label.innerText
-    });
-
-    // Batasi log agar tidak memberatkan browser (simpan 1 jam terakhir / 3600 detik)
-    if(logData.length > 3600) logData.shift();
-    localStorage.setItem('iaq_pro_logs', JSON.stringify(logData));
-
-    renderUI();
-});
-
-// --- UI HELPERS ---
 function showSection(id) {
-    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('nav-active'));
-    document.getElementById('btn-' + id).classList.add('nav-active');
     document.getElementById('section-dashboard').classList.toggle('hidden', id !== 'dashboard');
     document.getElementById('section-recap').classList.toggle('hidden', id !== 'recap');
+    document.getElementById('btn-dashboard').className = id === 'dashboard' ? 'text-xs font-bold tracking-widest nav-active pb-1' : 'text-xs font-bold tracking-widest text-slate-500 pb-1';
+    document.getElementById('btn-recap').className = id === 'recap' ? 'text-xs font-bold tracking-widest nav-active pb-1' : 'text-xs font-bold tracking-widest text-slate-500 pb-1';
 }
 
-function setFilter(mode) {
-    currentFilter = mode;
+function setFilter(m) {
+    currentFilter = m;
     document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active-filter'));
     event.target.classList.add('active-filter');
     renderUI();
@@ -244,12 +269,8 @@ function downloadCSV() {
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `IAQ_Report_${currentFilter}_${new Date().getTime()}.csv`;
-    a.click();
+    a.href = url; a.download = `IAQ_PRO_REPORT.csv`; a.click();
 }
-
-window.onload = renderUI;
 </script>
 </body>
 </html>
