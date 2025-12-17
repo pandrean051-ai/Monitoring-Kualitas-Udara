@@ -3,57 +3,92 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>IAQ Pro - Gauge Dashboard</title>
+    <title>IAQ PRO - Professional Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
     <style>
-        .active-filter { background-color: #2563eb !important; color: white !important; }
-        .nav-active { border-bottom: 4px solid #3b82f6; color: #3b82f6; }
-        /* Container untuk menumpuk teks di tengah speedometer */
-        .gauge-container { position: relative; width: 100%; max-width: 250px; margin: 0 auto; }
-        .gauge-value { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); text-align: center; }
+        body { font-family: 'Inter', sans-serif; background: #0b0f1a; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .nav-active { color: #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 12px; }
+        .gauge-container { position: relative; width: 100%; max-width: 280px; }
+        .gauge-overlay { position: absolute; bottom: 15%; left: 50%; transform: translateX(-50%); text-align: center; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        
+        /* Gradient Background */
+        .bg-gradient-custom { background: radial-gradient(circle at top right, #1e293b, #0b0f1a); }
     </style>
 </head>
-<body class="bg-[#0f172a] text-slate-200 font-sans">
+<body class="bg-gradient-custom text-slate-300 min-h-screen">
 
-    <div class="container mx-auto p-4 lg:p-8">
-        <header class="flex justify-between items-center mb-10 bg-[#1e293b] p-6 rounded-2xl border border-slate-700">
-            <div>
-                <h1 class="text-2xl font-bold text-white tracking-tight">IAQ PRO <span class="text-blue-500 text-sm font-normal italic">Gauge Edition</span></h1>
-                <p id="conn-status" class="text-xs text-yellow-500 font-mono mt-1 uppercase">● Connecting...</p>
+    <div class="container mx-auto p-4 lg:p-10 max-w-7xl">
+        <header class="flex flex-col md:flex-row justify-between items-center glass p-4 rounded-2xl mb-8 gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-blue-600 p-2 rounded-lg">
+                    <span class="material-icons-round text-white">air</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-extrabold text-white tracking-tight italic">IAQ PRO <span class="text-blue-500 font-light not-italic text-sm">v3.0</span></h1>
+                    <div class="flex items-center gap-2">
+                        <span class="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <p id="conn-status" class="text-[10px] uppercase font-bold tracking-widest text-emerald-500">System Live</p>
+                    </div>
+                </div>
             </div>
-            <div class="flex gap-4">
-                <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-link font-bold text-sm px-4 py-2 nav-active">DASHBOARD</button>
-                <button onclick="showSection('recap')" id="btn-recap" class="nav-link font-bold text-sm px-4 py-2">ANALITIK & REKAP</button>
-            </div>
+            
+            <nav class="flex gap-2">
+                <button onclick="showSection('dashboard')" id="btn-dashboard" class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all nav-active">
+                    <span class="material-icons-round text-sm">dashboard</span> Dashboard
+                </button>
+                <button onclick="showSection('recap')" id="btn-recap" class="flex items-center gap-2 px-5 py-2.5 text-sm font-semibold transition-all hover:bg-slate-800 rounded-xl">
+                    <span class="material-icons-round text-sm">analytics</span> Analytics
+                </button>
+            </nav>
         </header>
 
-        <div id="section-dashboard" class="space-y-6">
-            <div id="status-card" class="bg-[#1e293b] border border-slate-700 p-6 rounded-3xl text-center">
-                <h2 id="status-label" class="text-3xl font-black italic tracking-tighter">-- WAITING --</h2>
+        <div id="section-dashboard" class="space-y-8">
+            <div id="status-card" class="glass border-l-4 border-emerald-500 p-8 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-6 shadow-2xl">
+                <div>
+                    <p class="text-slate-500 uppercase text-xs font-black tracking-[0.3em] mb-2">Overall Quality</p>
+                    <h2 id="status-label" class="text-4xl md:text-5xl font-extrabold text-emerald-400 italic">-- READING --</h2>
+                </div>
+                <div class="hidden md:block">
+                    <span class="material-icons-round text-6xl text-slate-700">shutter_speed</span>
+                </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="bg-[#1e293b] p-6 rounded-3xl border border-slate-700 flex flex-col items-center">
-                    <p class="text-slate-400 text-xs font-bold uppercase mb-4">Temperature Gauge</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center shadow-xl hover:border-rose-500/30 transition-colors">
+                    <div class="w-full flex justify-between items-center mb-6">
+                        <span class="material-icons-round text-rose-500 bg-rose-500/10 p-2 rounded-xl">thermostat</span>
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Temperature</span>
+                    </div>
                     <div class="gauge-container">
                         <canvas id="tempGauge"></canvas>
-                        <div class="gauge-value">
-                            <h2 id="live-suhu" class="text-5xl font-black text-rose-500 tracking-tighter">--</h2>
-                            <span class="text-slate-500 font-bold">°Celsius</span>
+                        <div class="gauge-overlay">
+                            <h2 id="live-suhu" class="text-6xl font-black text-white tracking-tighter">--</h2>
+                            <p class="text-slate-500 font-semibold text-xs mt-1">°CELSIUS</p>
                         </div>
                     </div>
                 </div>
 
-                <div class="bg-[#1e293b] p-6 rounded-3xl border border-slate-700 flex flex-col items-center">
-                    <p class="text-slate-400 text-xs font-bold uppercase mb-4">Humidity Gauge</p>
+                <div class="glass p-8 rounded-[2.5rem] flex flex-col items-center shadow-xl hover:border-cyan-500/30 transition-colors">
+                    <div class="w-full flex justify-between items-center mb-6">
+                        <span class="material-icons-round text-cyan-400 bg-cyan-400/10 p-2 rounded-xl">water_drop</span>
+                        <span class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Humidity</span>
+                    </div>
                     <div class="gauge-container">
                         <canvas id="humGauge"></canvas>
-                        <div class="gauge-value">
-                            <h2 id="live-hum" class="text-5xl font-black text-cyan-400 tracking-tighter">--</h2>
-                            <span class="text-slate-500 font-bold">% RH</span>
+                        <div class="gauge-overlay">
+                            <h2 id="live-hum" class="text-6xl font-black text-white tracking-tighter">--</h2>
+                            <p class="text-slate-500 font-semibold text-xs mt-1">% RELATIVE</p>
                         </div>
                     </div>
                 </div>
@@ -61,16 +96,46 @@
         </div>
 
         <div id="section-recap" class="hidden space-y-6">
-            <div class="bg-[#1e293b] p-6 rounded-3xl border border-slate-700">
-                <div class="h-64 mb-6"><canvas id="mainChart"></canvas></div>
-                <div class="overflow-hidden rounded-xl border border-slate-800 bg-[#0f172a]">
-                    <table class="w-full text-left text-xs"><tbody id="table-body"></tbody></table>
+            <div class="glass p-8 rounded-3xl">
+                <div class="flex justify-between items-center mb-10">
+                    <h3 class="text-xl font-bold text-white italic">Data History</h3>
+                    <div class="flex gap-2 bg-slate-900/50 p-1 rounded-xl">
+                        <button onclick="setFilter('sec')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg bg-blue-600 text-white">Live</button>
+                        <button onclick="setFilter('min')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg hover:bg-slate-800">Min</button>
+                        <button onclick="setFilter('hour')" class="px-4 py-2 text-[10px] font-black uppercase rounded-lg hover:bg-slate-800">Hour</button>
+                    </div>
+                </div>
+                
+                <div class="h-80 mb-10 w-full">
+                    <canvas id="mainChart"></canvas>
+                </div>
+
+                <div class="flex justify-between items-center mb-6 px-2">
+                    <h4 class="text-xs font-black text-slate-500 uppercase tracking-[0.2em]">Detailed Records</h4>
+                    <button onclick="downloadCSV()" class="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-5 py-2 rounded-xl text-white text-xs font-bold shadow-lg shadow-emerald-900/20 transition-all">
+                        <span class="material-icons-round text-sm">file_download</span> EXPORT CSV
+                    </button>
+                </div>
+
+                <div class="rounded-2xl overflow-hidden border border-slate-800">
+                    <table class="w-full text-left">
+                        <thead class="bg-slate-800/50 text-slate-500 text-[10px] uppercase font-black">
+                            <tr>
+                                <th class="p-5">Time</th>
+                                <th class="p-5">Temp (°C)</th>
+                                <th class="p-5">Hum (%)</th>
+                                <th class="p-5 text-right">Condition</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body" class="text-sm divide-y divide-slate-800"></tbody>
+                    </table>
                 </div>
             </div>
         </div>
     </div>
 
 <script>
+// --- CONFIGURATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
     databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -81,66 +146,94 @@ const db = firebase.database();
 
 let logData = JSON.parse(localStorage.getItem('iaq_pro_logs')) || [];
 
-// --- GAUGE CREATOR FUNCTION ---
-function createGaugeConfig(color, maxVal) {
-    return {
+// --- GAUGE CREATOR (ADVANCED) ---
+function createGauge(ctx, color) {
+    return new Chart(ctx, {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: [0, maxVal],
+                data: [0, 100],
                 backgroundColor: [color, '#1e293b'],
                 borderWidth: 0,
-                circumference: 180,
-                rotation: 270,
-                borderRadius: 10,
-                cutout: '85%'
+                circumference: 220, // Lebih melingkar
+                rotation: 250,
+                borderRadius: 20,
+                cutout: '88%'
             }]
         },
         options: {
             responsive: true,
-            maintainAspectRatio: true,
-            plugins: { legend: { display: false }, tooltip: { enabled: false } }
+            plugins: { tooltip: { enabled: false }, legend: { display: false } }
         }
-    };
+    });
 }
 
-// Inisialisasi Gauge
-const tempGauge = new Chart(document.getElementById('tempGauge'), createGaugeConfig('#f43f5e', 50)); // Max 50°C
-const humGauge = new Chart(document.getElementById('humGauge'), createGaugeConfig('#22d3ee', 100)); // Max 100%
+const tempGauge = createGauge(document.getElementById('tempGauge'), '#f43f5e');
+const humGauge = createGauge(document.getElementById('humGauge'), '#22d3ee');
 
-// --- FIREBASE LISTENER ---
-db.ref('DHT22').on('value', (snapshot) => {
-    const val = snapshot.val();
+// --- ANALYTICS CHART ---
+const mainCtx = document.getElementById('mainChart').getContext('2d');
+const mainChart = new Chart(mainCtx, {
+    type: 'line',
+    data: { labels: [], datasets: [
+        { label: 'Temp', data: [], borderColor: '#f43f5e', tension: 0.4, fill: true, backgroundColor: 'rgba(244, 63, 94, 0.05)', pointRadius: 0 },
+        { label: 'Hum', data: [], borderColor: '#22d3ee', tension: 0.4, fill: true, backgroundColor: 'rgba(34, 211, 238, 0.05)', pointRadius: 0 }
+    ]},
+    options: {
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+            x: { grid: { display: false }, ticks: { color: '#475569', font: { size: 9 } } },
+            y: { grid: { color: '#1e293b' }, ticks: { color: '#475569' } }
+        }
+    }
+});
+
+// --- FIREBASE LOGIC ---
+db.ref('DHT22').on('value', (snap) => {
+    const val = snap.val();
     if(!val) return;
-
-    document.getElementById('conn-status').innerText = "● LIVE STREAMING";
-    document.getElementById('conn-status').className = "text-xs text-emerald-500 font-mono mt-1 uppercase";
 
     const s = parseFloat(val.suhu);
     const h = parseFloat(val.kelembaban);
 
-    // Update Teks
+    // Update Gauges
     document.getElementById('live-suhu').innerText = s.toFixed(1);
     document.getElementById('live-hum').innerText = h.toFixed(1);
-
-    // Update Speedometer (Gauge)
+    
+    // Animate Gauges (Temp max 50, Hum max 100)
     tempGauge.data.datasets[0].data = [s, 50 - s];
-    tempGauge.update();
-
     humGauge.data.datasets[0].data = [h, 100 - h];
+    tempGauge.update();
     humGauge.update();
 
-    // Logika Status
+    // Status logic
     const isHot = s > 33;
     const label = document.getElementById('status-label');
     label.innerText = isHot ? "UNHEALTHY / HOT" : "HEALTHY / COMFORT";
-    label.className = `text-3xl font-black italic ${isHot ? 'text-rose-500' : 'text-emerald-500'}`;
+    label.className = `text-4xl md:text-5xl font-extrabold italic ${isHot ? 'text-rose-500' : 'text-emerald-400'}`;
+    document.getElementById('status-card').style.borderColor = isHot ? '#f43f5e' : '#10b981';
 
-    // Simpan Log
-    logData.push({ t: Date.now(), s: s, h: h, st: label.innerText });
-    if(logData.length > 2000) logData.shift();
+    // Store & Sync
+    const timestamp = new Date().toLocaleTimeString('id-ID', {hour12: false});
+    logData.push({ t: timestamp, s: s, h: h, st: label.innerText });
+    if(logData.length > 1000) logData.shift();
     localStorage.setItem('iaq_pro_logs', JSON.stringify(logData));
+    
+    refreshTable();
 });
+
+function refreshTable() {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = [...logData].reverse().slice(0, 15).map(d => `
+        <tr class="hover:bg-slate-800/50 transition-colors">
+            <td class="p-5 font-bold text-slate-500">${d.t}</td>
+            <td class="p-5 text-rose-400 font-bold">${d.s}°</td>
+            <td class="p-5 text-cyan-400 font-bold">${d.h}%</td>
+            <td class="p-5 text-right"><span class="px-3 py-1 rounded-full bg-slate-900 text-[10px] font-black uppercase text-slate-400 border border-slate-700">${d.st}</span></td>
+        </tr>
+    `).join('');
+}
 
 function showSection(id) {
     document.getElementById('section-dashboard').classList.toggle('hidden', id !== 'dashboard');
