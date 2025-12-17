@@ -8,15 +8,17 @@
 </head>
 <body>
 
-    <h1>Data Realtime dari Firebase</h1>
+    <h1>IAQ Realtime Dashboard</h1>
     <div id="container">
-        <p>Status: <span id="status">Menghubungkan...</span></p>
-        <p>Nilai Sensor: <strong id="sensor-value">--</strong></p>
+        <p>Status: <span id="status" style="font-weight: bold;">Menghubungkan...</span></p>
+        <hr>
+        <p>Suhu: <strong id="suhu-value">--</strong> °C</p>
+        <p>Kelembaban: <strong id="kelembaban-value">--</strong> %</p>
+        <hr>
         <p>Terakhir Update: <span id="timestamp">--</span></p>
     </div>
 
     <script>
-        // 1. Masukkan Konfigurasi Firebase Anda di sini
         const firebaseConfig = {
             apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
             authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
@@ -27,26 +29,32 @@
             appId: "1:514766791631:web:40aff45db9e90209ea68ba"
         };
 
-        // 2. Inisialisasi Firebase
+        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // 3. Ambil Data (Contoh path database: "monitoring/sensor1")
-        // Ubah 'monitoring/sensor1' sesuai struktur di Firebase Anda
-        const dataRef = database.ref('monitoring/sensor1');
+        // PERBAIKAN: Path diubah ke 'DHT22' sesuai gambar Firebase Anda
+        const dataRef = database.ref('DHT22');
 
         dataRef.on('value', (snapshot) => {
             const data = snapshot.val();
+            
             if (data) {
-                document.getElementById('sensor-value').innerText = data.nilai || data;
+                // Mengambil nilai suhu dan kelembaban dari objek DHT22
+                document.getElementById('suhu-value').innerText = data.suhu;
+                document.getElementById('kelembaban-value').innerText = data.kelembaban;
+                
                 document.getElementById('timestamp').innerText = new Date().toLocaleTimeString();
                 document.getElementById('status').innerText = "Terhubung";
                 document.getElementById('status').style.color = "green";
+                
+                console.log("Data diterima:", data);
             } else {
-                document.getElementById('status').innerText = "Data Kosong";
+                document.getElementById('status').innerText = "Data Kosong di Path DHT22";
+                document.getElementById('status').style.color = "orange";
             }
         }, (error) => {
-            console.error(error);
+            console.error("Firebase Error:", error);
             document.getElementById('status').innerText = "Error: " + error.message;
             document.getElementById('status').style.color = "red";
         });
