@@ -2,23 +2,48 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Monitoring Firebase ke GitHub</title>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IAQ Monitoring Dashboard - Realtime</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a2e; color: white; text-align: center; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: #16213e; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .grid { display: flex; justify-content: space-around; margin-bottom: 30px; }
+        .card { background: #0f3460; padding: 20px; border-radius: 10px; width: 40%; }
+        .value { font-size: 2.5em; font-weight: bold; color: #e94560; }
+        .label { font-size: 1.1em; color: #95a5a6; }
+        #status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; margin-bottom: 20px; }
+        canvas { background: #1a1a2e; border-radius: 10px; padding: 10px; }
+    </style>
 </head>
 <body>
 
-    <h1>IAQ Realtime Dashboard</h1>
-    <div id="container">
-        <p>Status: <span id="status" style="font-weight: bold;">Menghubungkan...</span></p>
-        <hr>
-        <p>Suhu: <strong id="suhu-value">--</strong> °C</p>
-        <p>Kelembaban: <strong id="kelembaban-value">--</strong> %</p>
-        <hr>
-        <p>Terakhir Update: <span id="timestamp">--</span></p>
+    <div class="container">
+        <h1>IAQ Monitoring Dashboard</h1>
+        <div id="status" style="background: #e94560;">Menghubungkan Firebase...</div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="label">Suhu</div>
+                <div class="value"><span id="suhu-val">--</span>°C</div>
+            </div>
+            <div class="card">
+                <div class="label">Kelembaban</div>
+                <div class="value" style="color: #4cc9f0;"><span id="hum-val">--</span>%</div>
+            </div>
+        </div>
+
+        <canvas id="myChart"></canvas>
+        <p style="font-size: 0.8em; color: #666; margin-top: 20px;">Terakhir Update: <span id="timestamp">--</span></p>
     </div>
 
     <script>
+        // Konfigurasi Firebase Anda
         const firebaseConfig = {
             apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
             authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
@@ -29,34 +54,69 @@
             appId: "1:514766791631:web:40aff45db9e90209ea68ba"
         };
 
-        // Inisialisasi Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
 
-        // PERBAIKAN: Path diubah ke 'DHT22' sesuai gambar Firebase Anda
-        const dataRef = database.ref('DHT22');
-
-        dataRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            
-            if (data) {
-                // Mengambil nilai suhu dan kelembaban dari objek DHT22
-                document.getElementById('suhu-value').innerText = data.suhu;
-                document.getElementById('kelembaban-value').innerText = data.kelembaban;
-                
-                document.getElementById('timestamp').innerText = new Date().toLocaleTimeString();
-                document.getElementById('status').innerText = "Terhubung";
-                document.getElementById('status').style.color = "green";
-                
-                console.log("Data diterima:", data);
-            } else {
-                document.getElementById('status').innerText = "Data Kosong di Path DHT22";
-                document.getElementById('status').style.color = "orange";
+        // Inisialisasi Chart.js
+        const ctx = document.getElementById('myChart').getContext('2d');
+        const myChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Label waktu
+                datasets: [
+                    {
+                        label: 'Suhu (°C)',
+                        data: [],
+                        borderColor: '#e94560',
+                        tension: 0.4,
+                        fill: false
+                    },
+                    {
+                        label: 'Kelembaban (%)',
+                        data: [],
+                        borderColor: '#4cc9f0',
+                        tension: 0.4,
+                        fill: false
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { ticks: { color: '#95a5a6' } },
+                    y: { ticks: { color: '#95a5a6' } }
+                },
+                plugins: {
+                    legend: { labels: { color: 'white' } }
+                }
             }
-        }, (error) => {
-            console.error("Firebase Error:", error);
-            document.getElementById('status').innerText = "Error: " + error.message;
-            document.getElementById('status').style.color = "red";
+        });
+
+        // Ambil data dari Path DHT22
+        database.ref('DHT22').on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                const now = new Date().toLocaleTimeString();
+
+                // Update Angka
+                document.getElementById('suhu-val').innerText = data.suhu;
+                document.getElementById('hum-val').innerText = data.kelembaban;
+                document.getElementById('timestamp').innerText = now;
+                document.getElementById('status').innerText = "ONLINE";
+                document.getElementById('status').style.background = "#28a745";
+
+                // Update Grafik (Maksimal 10 data terakhir agar tidak berat)
+                if (myChart.data.labels.length > 10) {
+                    myChart.data.labels.shift();
+                    myChart.data.datasets[0].data.shift();
+                    myChart.data.datasets[1].data.shift();
+                }
+
+                myChart.data.labels.push(now);
+                myChart.data.datasets[0].data.push(data.suhu);
+                myChart.data.datasets[1].data.push(data.kelembaban);
+                myChart.update();
+            }
         });
     </script>
 </body>
