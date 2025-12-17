@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>IAQ Dashboard Pro - Recap System</title>
+    <title>IAQ Dashboard Pro - Analytics System</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -13,21 +13,20 @@
 
     <div class="container mx-auto p-4 lg:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-3xl font-extrabold text-white">Advanced IAQ Monitoring</h1>
-            <p id="conn-text" class="text-yellow-500 animate-pulse">Waiting for Firebase...</p>
+            <h1 class="text-3xl font-extrabold text-white">IAQ Smart Analytics</h1>
+            <p id="conn-text" class="text-yellow-500 animate-pulse">Connecting to Firebase...</p>
         </header>
 
         <div class="flex flex-wrap justify-center gap-2 mb-8">
-            <button onclick="showSection('dashboard')" class="nav-btn bg-blue-600 px-6 py-2 rounded-lg font-bold">Dashboard</button>
-            <button onclick="showSection('recap')" class="nav-btn bg-gray-700 px-6 py-2 rounded-lg font-bold">Rekap Data</button>
-            <button onclick="showSection('trends')" class="nav-btn bg-gray-700 px-6 py-2 rounded-lg font-bold">Tren Grafik</button>
+            <button onclick="showSection('dashboard')" id="nav-dashboard" class="nav-btn bg-blue-600 px-6 py-2 rounded-lg font-bold transition">Dashboard</button>
+            <button onclick="showSection('trends')" id="nav-trends" class="nav-btn bg-gray-700 px-6 py-2 rounded-lg font-bold transition">Grafik Analitik</button>
+            <button onclick="showSection('recap')" id="nav-recap" class="nav-btn bg-gray-700 px-6 py-2 rounded-lg font-bold transition">Tabel Rekap</button>
         </div>
 
         <div id="section-dashboard" class="content-section">
             <div id="status-box" class="p-6 rounded-2xl text-center mb-8 transition-all duration-500 bg-gray-800 border-2 border-gray-700">
-                <p id="status-label" class="text-2xl font-black">MEMUAT DATA...</p>
+                <p id="status-label" class="text-2xl font-black text-gray-500">MEMUAT DATA...</p>
             </div>
-
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div class="bg-gray-800 p-8 rounded-2xl border border-gray-700 text-center">
                     <p class="text-gray-400 uppercase text-sm font-bold">Suhu</p>
@@ -42,44 +41,48 @@
             </div>
         </div>
 
-        <div id="section-recap" class="content-section hidden">
+        <div id="section-trends" class="content-section hidden">
             <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700">
                 <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
-                    <div class="flex gap-2" id="recap-filter">
-                        <button onclick="filterRecap('min')" class="filter-btn bg-blue-600 px-3 py-1 rounded text-xs">Menit</button>
-                        <button onclick="filterRecap('hour')" class="filter-btn bg-gray-700 px-3 py-1 rounded text-xs">Jam</button>
-                        <button onclick="filterRecap('day')" class="filter-btn bg-gray-700 px-3 py-1 rounded text-xs">Hari</button>
-                        <button onclick="filterRecap('month')" class="filter-btn bg-gray-700 px-3 py-1 rounded text-xs">Bulan</button>
+                    <h3 class="text-xl font-bold">Tren Data Terkini</h3>
+                    <div class="flex gap-2" id="trend-filter">
+                        <button onclick="updateFilter('min')" class="filter-btn bg-blue-600 px-4 py-1 rounded-full text-xs font-bold">Realtime/Menit</button>
+                        <button onclick="updateFilter('hour')" class="filter-btn bg-gray-700 px-4 py-1 rounded-full text-xs font-bold">Per Jam</button>
+                        <button onclick="updateFilter('day')" class="filter-btn bg-gray-700 px-4 py-1 rounded-full text-xs font-bold">Per Hari</button>
+                        <button onclick="updateFilter('month')" class="filter-btn bg-gray-700 px-4 py-1 rounded-full text-xs font-bold">Bulanan</button>
                     </div>
-                    <button onclick="exportCSV()" class="bg-green-600 px-4 py-2 rounded text-sm font-bold hover:bg-green-500">Download CSV</button>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left">
-                        <thead class="bg-gray-900">
-                            <tr>
-                                <th class="p-4">Waktu</th>
-                                <th class="p-4">Avg Suhu</th>
-                                <th class="p-4">Avg Hum</th>
-                                <th class="p-4">Kondisi</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recap-table-body" class="divide-y divide-gray-700 text-sm">
-                            </tbody>
-                    </table>
+                <div class="h-[400px]">
+                    <canvas id="trendChart"></canvas>
                 </div>
             </div>
         </div>
 
-        <div id="section-trends" class="content-section hidden">
-            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 h-[500px]">
-                <h3 class="text-xl font-bold mb-4">Grafik Analitik</h3>
-                <canvas id="trendChart"></canvas>
+        <div id="section-recap" class="content-section hidden">
+            <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-bold">Riwayat Log</h3>
+                    <button onclick="exportCSV()" class="bg-green-600 px-4 py-2 rounded text-sm font-bold hover:bg-green-500 transition">Export CSV</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="bg-gray-900 text-gray-400 uppercase text-xs">
+                            <tr>
+                                <th class="p-4">Waktu</th>
+                                <th class="p-4">Suhu</th>
+                                <th class="p-4">Kelembaban</th>
+                                <th class="p-4">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recap-table-body" class="divide-y divide-gray-700"></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
 
 <script>
-// FIREBASE CONFIG
+// --- CONFIG & INITIALIZATION ---
 const firebaseConfig = {
     apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
     databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -88,131 +91,153 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.database();
 
-// VARIABLES
 let rawLogs = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'min';
 
-// CHART INITIALIZATION
+// --- CHART SETUP ---
 const ctx = document.getElementById('trendChart').getContext('2d');
-let trendChart = new Chart(ctx, {
+const trendChart = new Chart(ctx, {
     type: 'line',
-    data: { labels: [], datasets: [
-        { label: 'Suhu (°C)', data: [], borderColor: '#ef4444', tension: 0.4 },
-        { label: 'Hum (%)', data: [], borderColor: '#3b82f6', tension: 0.4 }
-    ]},
-    options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: false } } }
-});
-
-// LISTENER FIREBASE
-db.ref('DHT22').on('value', (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-        document.getElementById('conn-text').innerText = "Connected";
-        document.getElementById('conn-text').classList.remove('text-yellow-500');
-        document.getElementById('conn-text').classList.add('text-green-500');
-
-        // Update Realtime UI
-        document.getElementById('live-suhu').innerText = data.suhu;
-        document.getElementById('live-hum').innerText = data.kelembaban;
-
-        // Update Status Box
-        const box = document.getElementById('status-box');
-        const label = document.getElementById('status-label');
-        if(data.suhu > 33) {
-            box.className = "p-6 rounded-2xl text-center mb-8 bg-red-900/50 border-2 border-red-500 text-red-100";
-            label.innerText = "KONDISI: PANAS / BURUK";
-        } else {
-            box.className = "p-6 rounded-2xl text-center mb-8 bg-green-900/50 border-2 border-green-500 text-green-100";
-            label.innerText = "KONDISI: NORMAL / NYAMAN";
-        }
-
-        // Simpan Data ke Log (Max 1000 data)
-        const logEntry = { 
-            t: Date.now(), 
-            s: parseFloat(data.suhu), 
-            h: parseFloat(data.kelembaban),
-            st: label.innerText.split(': ')[1]
-        };
-        rawLogs.push(logEntry);
-        if(rawLogs.length > 1000) rawLogs.shift();
-        localStorage.setItem('iaq_logs', JSON.stringify(rawLogs));
-
-        renderRecap();
+    data: { 
+        labels: [], 
+        datasets: [
+            { label: 'Suhu (°C)', data: [], borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.1)', fill: true, tension: 0.3, pointRadius: 2 },
+            { label: 'Kelembaban (%)', data: [], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.3, pointRadius: 2 }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { labels: { color: '#9ca3af' } } },
+        scales: {
+            x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af', maxRotation: 45 } },
+            y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }
+        },
+        animation: { duration: currentFilter === 'min' ? 0 : 1000 } // No animation for real-time for smoothness
     }
 });
 
-// LOGIC REKAP (MENIT, JAM, HARI, BULAN)
-function processRecap(mode) {
+// --- FIREBASE LISTENER ---
+db.ref('DHT22').on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
+
+    // Update Connection Status
+    const connText = document.getElementById('conn-text');
+    connText.innerText = "Sistem Online";
+    connText.className = "text-green-500 font-bold";
+
+    // Update Dashboard UI
+    document.getElementById('live-suhu').innerText = data.suhu;
+    document.getElementById('live-hum').innerText = data.kelembaban;
+
+    const box = document.getElementById('status-box');
+    const label = document.getElementById('status-label');
+    const isHot = data.suhu > 33;
+    
+    box.className = `p-6 rounded-2xl text-center mb-8 border-2 transition-all ${isHot ? 'bg-red-900/30 border-red-500' : 'bg-green-900/30 border-green-500'}`;
+    label.innerText = isHot ? "KONDISI: PANAS / BURUK" : "KONDISI: NORMAL / NYAMAN";
+    label.className = `text-2xl font-black ${isHot ? 'text-red-500' : 'text-green-500'}`;
+
+    // Store to Logs
+    const logEntry = { 
+        t: Date.now(), 
+        s: parseFloat(data.suhu), 
+        h: parseFloat(data.kelembaban),
+        st: label.innerText.split(': ')[1]
+    };
+    rawLogs.push(logEntry);
+    if(rawLogs.length > 2000) rawLogs.shift(); // Max capacity
+    localStorage.setItem('iaq_logs', JSON.stringify(rawLogs));
+
+    // Refresh Current View
+    renderData();
+});
+
+// --- DATA PROCESSING ---
+function processData(mode) {
     const grouped = {};
+    
     rawLogs.forEach(log => {
         const d = new Date(log.t);
         let key;
-        if(mode === 'min') key = d.getHours() + ":" + d.getMinutes();
+        
+        if(mode === 'min') key = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
         else if(mode === 'hour') key = d.getHours() + ":00";
-        else if(mode === 'day') key = d.toLocaleDateString('id-ID');
-        else if(mode === 'month') key = d.toLocaleString('id-ID', { month: 'long', year: 'numeric' });
+        else if(mode === 'day') key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
+        else if(mode === 'month') key = d.toLocaleString('id-ID', { month: 'long' });
 
         if(!grouped[key]) grouped[key] = { s: [], h: [], st: log.st };
         grouped[key].s.push(log.s);
         grouped[key].h.push(log.h);
     });
 
-    return Object.keys(grouped).map(k => ({
+    const result = Object.keys(grouped).map(k => ({
         time: k,
         suhu: (grouped[k].s.reduce((a,b) => a+b, 0) / grouped[k].s.length).toFixed(1),
         hum: (grouped[k].h.reduce((a,b) => a+b, 0) / grouped[k].h.length).toFixed(1),
         status: grouped[k].st
-    })).reverse();
+    }));
+
+    // Limit display for charts to prevent overcrowding
+    return mode === 'min' ? result.slice(-20) : result;
 }
 
-function renderRecap() {
-    const data = processRecap(currentFilter);
+function renderData() {
+    const data = processData(currentFilter);
+    
+    // 1. Update Tabel Rekap (Always show latest)
     const tbody = document.getElementById('recap-table-body');
-    tbody.innerHTML = data.map(d => `
-        <tr>
-            <td class="p-4 font-mono text-xs text-gray-400">${d.time}</td>
+    const tableData = [...data].reverse();
+    tbody.innerHTML = tableData.slice(0, 10).map(d => `
+        <tr class="hover:bg-gray-700/50 transition">
+            <td class="p-4 font-mono text-xs">${d.time}</td>
             <td class="p-4 text-red-400 font-bold">${d.suhu}°C</td>
             <td class="p-4 text-blue-400 font-bold">${d.hum}%</td>
-            <td class="p-4 text-xs font-bold">${d.status}</td>
+            <td class="p-4 text-xs">${d.status}</td>
         </tr>
     `).join('');
 
-    // Update Chart
-    const chartData = [...data].reverse();
-    trendChart.data.labels = chartData.map(d => d.time);
-    trendChart.data.datasets[0].data = chartData.map(d => d.suhu);
-    trendChart.data.datasets[1].data = chartData.map(d => d.hum);
+    // 2. Update Chart
+    trendChart.data.labels = data.map(d => d.time);
+    trendChart.data.datasets[0].data = data.map(d => d.suhu);
+    trendChart.data.datasets[1].data = data.map(d => d.hum);
+    
+    // Disable animation only for real-time to make it look "live"
+    trendChart.options.animation.duration = currentFilter === 'min' ? 0 : 800;
     trendChart.update();
 }
 
-// UI NAVIGATION
+// --- UI CONTROLS ---
+function updateFilter(mode) {
+    currentFilter = mode;
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.replace('bg-blue-600', 'bg-gray-700');
+    });
+    event.target.classList.replace('bg-gray-700', 'bg-blue-600');
+    renderData();
+}
+
 function showSection(id) {
     document.querySelectorAll('.content-section').forEach(s => s.classList.add('hidden'));
     document.getElementById('section-' + id).classList.remove('hidden');
+    
     document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('bg-blue-600', 'bg-gray-700'));
-    event.target.classList.replace('bg-gray-700', 'bg-blue-600');
-}
-
-function filterRecap(mode) {
-    currentFilter = mode;
-    document.querySelectorAll('.filter-btn').forEach(b => b.classList.replace('bg-blue-600', 'bg-gray-700'));
-    event.target.classList.replace('bg-gray-700', 'bg-blue-600');
-    renderRecap();
+    document.getElementById('nav-' + id).classList.replace('bg-gray-700', 'bg-blue-600');
 }
 
 function exportCSV() {
-    const data = processRecap(currentFilter);
-    let csv = "Waktu,Rata-rata Suhu,Rata-rata Kelembaban,Status\n";
+    const data = processData(currentFilter);
+    let csv = "Waktu,Suhu,Kelembaban,Status\n";
     data.forEach(d => csv += `${d.time},${d.suhu},${d.hum},${d.status}\n`);
     const blob = new Blob([csv], { type: 'text/csv' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `Recap_IAQ_${currentFilter}.csv`;
+    a.download = `IAQ_Report_${currentFilter}_${new Date().getTime()}.csv`;
     a.click();
 }
 
-// Render awal
-window.onload = renderRecap;
+window.onload = renderData;
 </script>
 </body>
 </html>
