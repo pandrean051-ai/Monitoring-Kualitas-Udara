@@ -1,123 +1,207 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IAQ Monitoring Dashboard - Realtime</title>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>IAQ Monitoring Dashboard - Fixed</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1a1a2e; color: white; text-align: center; margin: 0; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: #16213e; padding: 20px; border-radius: 15px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
-        .grid { display: flex; justify-content: space-around; margin-bottom: 30px; }
-        .card { background: #0f3460; padding: 20px; border-radius: 10px; width: 40%; }
-        .value { font-size: 2.5em; font-weight: bold; color: #e94560; }
-        .label { font-size: 1.1em; color: #95a5a6; }
-        #status { display: inline-block; padding: 5px 15px; border-radius: 20px; font-size: 0.8em; margin-bottom: 20px; }
-        canvas { background: #1a1a2e; border-radius: 10px; padding: 10px; }
+        .log-table th { position: sticky; top: 0; z-index: 10; }
+        .active-nav { background-color: #2563eb !important; color: white !important; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
     </style>
 </head>
-<body>
+<body class="bg-gray-900 min-h-screen text-gray-100 font-sans">
 
-    <div class="container">
-        <h1>IAQ Monitoring Dashboard</h1>
-        <div id="status" style="background: #e94560;">Menghubungkan Firebase...</div>
+    <div class="container mx-auto p-4 lg:p-8">
+        <header class="text-center mb-8">
+            <h1 class="text-3xl lg:text-4xl font-extrabold text-white mb-2">IAQ Monitoring Dashboard</h1>
+            <p class="text-sm text-gray-400">Status: <span id="connection-status" class="text-yellow-500 font-bold">Connecting to Firebase...</span></p>
+        </header>
 
-        <div class="grid">
-            <div class="card">
-                <div class="label">Suhu</div>
-                <div class="value"><span id="suhu-val">--</span>°C</div>
-            </div>
-            <div class="card">
-                <div class="label">Kelembaban</div>
-                <div class="value" style="color: #4cc9f0;"><span id="hum-val">--</span>%</div>
-            </div>
+        <div class="flex justify-center gap-4 mb-10">
+            <button id="nav-dashboard" onclick="switchView('dashboard')" class="px-6 py-2 rounded-full font-semibold bg-gray-700 text-gray-300 transition active-nav">Dashboard Realtime</button>
+            <button id="nav-recap" onclick="switchView('recap')" class="px-6 py-2 rounded-full font-semibold bg-gray-700 text-gray-300 transition">Rekap Data</button>
         </div>
 
-        <canvas id="myChart"></canvas>
-        <p style="font-size: 0.8em; color: #666; margin-top: 20px;">Terakhir Update: <span id="timestamp">--</span></p>
+        <div id="dashboard-section">
+            <div id="iaq-status-box" class="p-6 text-white font-bold rounded-xl shadow-xl text-center mb-6 bg-gray-700 transition-colors duration-500">
+                <p id="iaq-label" class="text-2xl uppercase tracking-widest">MEMUAT...</p>
+                <p class="text-sm font-light mt-1">Kualitas Udara Ruangan</p>
+            </div>
+
+            <div id="sensor-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Temperature</p>
+                    <p id="val-suhu" class="text-5xl font-black mt-2 text-red-500">--</p>
+                    <p class="text-sm text-gray-500">°Celsius</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Humidity</p>
+                    <p id="val-kelembaban" class="text-5xl font-black mt-2 text-blue-400">--</p>
+                    <p class="text-sm text-gray-500">% RH</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center opacity-50">
+                    <p class="text-xs font-bold text-gray-400 uppercase">Dust</p>
+                    <p id="val-debu" class="text-5xl font-black mt-2 text-yellow-500">0.00</p>
+                    <p class="text-sm text-gray-500">mg/m³</p>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg text-center opacity-50">
+                    <p class="text-xs font-bold text-gray-400 uppercase">CO2</p>
+                    <p id="val-co2" class="text-5xl font-black mt-2 text-green-400">400</p>
+                    <p class="text-sm text-gray-500">ppm</p>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-300 mb-6 border-l-4 border-blue-600 pl-4">Realtime Trends (Live Update)</h3>
+            <div class="bg-gray-800 p-4 rounded-2xl border border-gray-700 shadow-2xl h-96">
+                <canvas id="realtimeChart"></canvas>
+            </div>
+            <p class="text-center text-xs text-gray-500 mt-4">Terakhir diperbarui: <span id="last-time">--</span></p>
+        </div>
+
+        <div id="recap-section" class="hidden">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold">History Log</h2>
+                <button onclick="downloadCSV()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold transition">Download CSV</button>
+            </div>
+            <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
+                <table class="w-full text-left border-collapse">
+                    <thead class="bg-gray-700 text-gray-300 text-xs uppercase">
+                        <tr>
+                            <th class="p-4">Waktu</th>
+                            <th class="p-4">Suhu</th>
+                            <th class="p-4">Kelembaban</th>
+                            <th class="p-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body" class="text-sm divide-y divide-gray-700">
+                        </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <script>
-        // Konfigurasi Firebase Anda
-        const firebaseConfig = {
-            apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-            authDomain: "monitoring-kualitas-udar-8ad9d.firebaseapp.com",
-            databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "monitoring-kualitas-udar-8ad",
-            storageBucket: "monitoring-kualitas-udar-8ad9d.firebasestorage.app",
-            messagingSenderId: "514766791631",
-            appId: "1:514766791631:web:40aff45db9e90209ea68ba"
-        };
+<script>
+// 1. CONFIGURASI FIREBASE (SESUAI GAMBAR ANDA)
+const firebaseConfig = {
+    apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "monitoring-kualitas-udar-8ad9d"
+};
 
-        firebase.initializeApp(firebaseConfig);
-        const database = firebase.database();
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
-        // Inisialisasi Chart.js
-        const ctx = document.getElementById('myChart').getContext('2d');
-        const myChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: [], // Label waktu
-                datasets: [
-                    {
-                        label: 'Suhu (°C)',
-                        data: [],
-                        borderColor: '#e94560',
-                        tension: 0.4,
-                        fill: false
-                    },
-                    {
-                        label: 'Kelembaban (%)',
-                        data: [],
-                        borderColor: '#4cc9f0',
-                        tension: 0.4,
-                        fill: false
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: { ticks: { color: '#95a5a6' } },
-                    y: { ticks: { color: '#95a5a6' } }
-                },
-                plugins: {
-                    legend: { labels: { color: 'white' } }
-                }
-            }
-        });
+// 2. CHART CONFIGURATION
+const ctx = document.getElementById('realtimeChart').getContext('2d');
+const realtimeChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+        labels: [],
+        datasets: [
+            { label: 'Suhu (°C)', data: [], borderColor: '#ef4444', tension: 0.3, fill: false },
+            { label: 'Kelembaban (%)', data: [], borderColor: '#60a5fa', tension: 0.3, fill: false }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            y: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } },
+            x: { grid: { color: '#374151' }, ticks: { color: '#9ca3af' } }
+        },
+        plugins: { legend: { labels: { color: '#f3f4f6' } } }
+    }
+});
 
-        // Ambil data dari Path DHT22
-        database.ref('DHT22').on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                const now = new Date().toLocaleTimeString();
+// 3. REALTIME LISTENER
+const dataHistory = []; // Untuk tabel rekap
 
-                // Update Angka
-                document.getElementById('suhu-val').innerText = data.suhu;
-                document.getElementById('hum-val').innerText = data.kelembaban;
-                document.getElementById('timestamp').innerText = now;
-                document.getElementById('status').innerText = "ONLINE";
-                document.getElementById('status').style.background = "#28a745";
+db.ref('DHT22').on('value', (snapshot) => {
+    const data = snapshot.val();
+    const statusEl = document.getElementById('connection-status');
+    
+    if (data) {
+        statusEl.innerText = "Connected & Receiving Data";
+        statusEl.className = "text-green-500 font-bold";
 
-                // Update Grafik (Maksimal 10 data terakhir agar tidak berat)
-                if (myChart.data.labels.length > 10) {
-                    myChart.data.labels.shift();
-                    myChart.data.datasets[0].data.shift();
-                    myChart.data.datasets[1].data.shift();
-                }
+        const now = new Date().toLocaleTimeString('id-ID');
+        
+        // Update UI Cards
+        document.getElementById('val-suhu').innerText = data.suhu;
+        document.getElementById('val-kelembaban').innerText = data.kelembaban;
+        document.getElementById('last-time').innerText = now;
 
-                myChart.data.labels.push(now);
-                myChart.data.datasets[0].data.push(data.suhu);
-                myChart.data.datasets[1].data.push(data.kelembaban);
-                myChart.update();
-            }
-        });
-    </script>
+        // Update IAQ Status Box
+        const statusBox = document.getElementById('iaq-status-box');
+        const label = document.getElementById('iaq-label');
+        if (data.suhu > 33) {
+            statusBox.className = "p-6 text-white font-bold rounded-xl shadow-xl text-center mb-6 bg-red-600";
+            label.innerText = "BURUK";
+        } else {
+            statusBox.className = "p-6 text-white font-bold rounded-xl shadow-xl text-center mb-6 bg-green-600";
+            label.innerText = "BERSIH / NORMAL";
+        }
+
+        // Update Chart
+        if (realtimeChart.data.labels.length > 15) {
+            realtimeChart.data.labels.shift();
+            realtimeChart.data.datasets[0].data.shift();
+            realtimeChart.data.datasets[1].data.shift();
+        }
+        realtimeChart.data.labels.push(now);
+        realtimeChart.data.datasets[0].data.push(data.suhu);
+        realtimeChart.data.datasets[1].data.push(data.kelembaban);
+        realtimeChart.update();
+
+        // Simpan ke Log History (untuk tabel)
+        dataHistory.unshift({ time: now, suhu: data.suhu, hum: data.kelembaban, status: label.innerText });
+        renderTable();
+    }
+}, (error) => {
+    statusEl.innerText = "Error: " + error.message;
+    statusEl.className = "text-red-500 font-bold";
+});
+
+// 4. UI FUNCTIONS
+function switchView(view) {
+    document.getElementById('dashboard-section').classList.toggle('hidden', view !== 'dashboard');
+    document.getElementById('recap-section').classList.toggle('hidden', view !== 'recap');
+    document.getElementById('nav-dashboard').classList.toggle('active-nav', view === 'dashboard');
+    document.getElementById('nav-recap').classList.toggle('active-nav', view === 'recap');
+}
+
+function renderTable() {
+    const tbody = document.getElementById('table-body');
+    tbody.innerHTML = dataHistory.slice(0, 20).map(item => `
+        <tr class="hover:bg-gray-700/50">
+            <td class="p-4 text-gray-400">${item.time}</td>
+            <td class="p-4 text-red-400 font-bold">${item.suhu}°C</td>
+            <td class="p-4 text-blue-400 font-bold">${item.hum}%</td>
+            <td class="p-4"><span class="px-2 py-1 rounded text-xs ${item.status === 'BURUK' ? 'bg-red-900 text-red-200' : 'bg-green-900 text-green-200'}">${item.status}</span></td>
+        </tr>
+    `).join('');
+}
+
+function downloadCSV() {
+    let csv = "Waktu,Suhu,Kelembaban,Status\n";
+    dataHistory.forEach(row => {
+        csv += `${row.time},${row.suhu},${row.hum},${row.status}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'rekap_iaq_data.csv';
+    a.click();
+}
+</script>
 </body>
 </html>
