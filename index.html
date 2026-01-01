@@ -1,293 +1,197 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>IAQ PRO - Advanced Analytics</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono&display=swap');
-        body { background-color: #0b0e14; font-family: 'Inter', sans-serif; color: #d8d9da; scroll-behavior: smooth; }
-        .nav-active { border-bottom: 3px solid #3274d9; color: #3274d9; }
-        .card-grafana { background: #181b1f; border: 1px solid #26292e; border-radius: 4px; transition: 0.3s; }
-        .card-grafana:hover { border-color: #3274d9; }
-        .active-filter { background-color: #3274d9 !important; color: white !important; }
-        .gauge-wrapper { position: relative; width: 100%; height: 160px; }
-        .gauge-center { position: absolute; bottom: 10%; left: 50%; transform: translateX(-50%); text-align: center; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #0b0e14; }
-        ::-webkit-scrollbar-thumb { background: #26292e; border-radius: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IAQ PRO - Advanced Analytics</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
+.card-grafana{background:#181b1f;border:1px solid #26292e;border-radius:4px}
+.nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
+.active-filter{background:#3274d9;color:white}
+</style>
 </head>
+
 <body class="p-4 lg:p-8">
+<div class="max-w-7xl mx-auto">
 
-    <div class="max-w-7xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e] gap-4">
-            <div class="flex items-center gap-4">
-                <h1 class="text-xl font-black tracking-tighter text-white">IAQ PRO <span class="text-[#3274d9] text-xs font-mono ml-2 underline">v4.5 ANALYTICS</span></h1>
-                <div class="flex items-center gap-2 px-3 py-1 bg-[#181b1f] border border-[#26292e] rounded">
-                    <span id="dot" class="h-2 w-2 rounded-full bg-yellow-500 animate-pulse"></span>
-                    <p id="conn-status" class="text-[10px] font-mono text-slate-400 uppercase tracking-widest">Inisialisasi...</p>
-                </div>
-            </div>
-            <nav class="flex gap-6">
-                <button onclick="showSection('dashboard')" id="btn-dashboard" class="text-xs font-bold tracking-widest nav-active pb-1 uppercase">Monitor</button>
-                <button onclick="showSection('recap')" id="btn-recap" class="text-xs font-bold tracking-widest text-slate-500 hover:text-white transition uppercase">Rekap & Analitik</button>
-            </nav>
-        </header>
+<!-- HEADER -->
+<header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
+    <h1 class="text-xl font-black text-white">IAQ PRO <span class="text-[#3274d9] text-xs">v4.5</span></h1>
+    <nav class="flex gap-6">
+        <button onclick="showSection('dashboard')" id="btn-dashboard" class="nav-active text-xs font-bold uppercase">Monitor</button>
+        <button onclick="showSection('recap')" id="btn-recap" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
+    </nav>
+</header>
 
-        <div id="section-dashboard" class="space-y-4">
-            <div class="card-grafana p-4 flex justify-between items-center border-l-4 border-l-[#3274d9]">
-                <div>
-                    <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.2em]">Kondisi Udara Saat Ini</p>
-                    <h2 id="status-label" class="text-2xl font-black italic tracking-tighter text-white uppercase">Menunggu...</h2>
-                </div>
-                <div id="last-update" class="text-right text-[10px] font-mono text-slate-500">
-                    --:--:--
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div class="card-grafana p-5">
-                    <span class="text-[11px] font-bold text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded uppercase">Suhu</span>
-                    <div class="gauge-wrapper"><canvas id="tempGauge"></canvas><div class="gauge-center"><h2 id="live-suhu" class="text-4xl font-black text-white leading-none">--</h2><p class="text-[10px] font-bold text-slate-500 mt-1">°C</p></div></div>
-                </div>
-                <div class="card-grafana p-5">
-                    <span class="text-[11px] font-bold text-cyan-500 bg-cyan-500/10 px-2 py-0.5 rounded uppercase">Lembab</span>
-                    <div class="gauge-wrapper"><canvas id="humGauge"></canvas><div class="gauge-center"><h2 id="live-hum" class="text-4xl font-black text-white leading-none">--</h2><p class="text-[10px] font-bold text-slate-500 mt-1">% RH</p></div></div>
-                </div>
-                <div class="card-grafana p-5">
-                    <span class="text-[11px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded uppercase">CO2</span>
-                    <div class="gauge-wrapper"><canvas id="co2Gauge"></canvas><div class="gauge-center"><h2 id="live-co2" class="text-4xl font-black text-white leading-none">--</h2><p class="text-[10px] font-bold text-slate-500 mt-1">PPM</p></div></div>
-                </div>
-                <div class="card-grafana p-5">
-                    <span class="text-[11px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded uppercase">Debu</span>
-                    <div class="gauge-wrapper"><canvas id="dustGauge"></canvas><div class="gauge-center"><h2 id="live-dust" class="text-4xl font-black text-white leading-none">--</h2><p class="text-[10px] font-bold text-slate-500 mt-1">µg/m³</p></div></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="section-recap" class="hidden space-y-4">
-            <div class="card-grafana p-6">
-                <div class="flex flex-wrap justify-between items-center mb-6 gap-4">
-                    <div>
-                        <h3 class="font-bold text-white tracking-widest text-sm uppercase italic">Grafik Analitik Terpadu</h3>
-                        <p class="text-[10px] text-slate-500">Rata-rata data berdasarkan periode terpilih</p>
-                    </div>
-                    <div class="flex gap-1 bg-[#0b0e14] p-1 rounded border border-[#26292e]">
-                        <button onclick="setFilter('sec')" class="f-btn active-filter px-4 py-1 text-[10px] font-bold uppercase transition">Live</button>
-                        <button onclick="setFilter('min')" class="f-btn px-4 py-1 text-[10px] font-bold uppercase text-slate-500 transition">Menit</button>
-                        <button onclick="setFilter('hour')" class="f-btn px-4 py-1 text-[10px] font-bold uppercase text-slate-500 transition">Jam</button>
-                        <button onclick="setFilter('day')" class="f-btn px-4 py-1 text-[10px] font-bold uppercase text-slate-500 transition">Hari</button>
-                    </div>
-                </div>
-                
-                <div class="h-[400px] mb-8">
-                    <canvas id="mainChart"></canvas>
-                </div>
-
-                <div class="flex justify-between items-center mb-4">
-                    <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest">Data History Log</p>
-                    <button onclick="downloadCSV()" class="bg-[#3274d9] hover:bg-[#2659a6] text-white text-[10px] font-bold px-6 py-2 rounded transition shadow-lg">UNDUH CSV</button>
-                </div>
-
-                <div class="overflow-x-auto border border-[#26292e] rounded">
-                    <table class="w-full text-left text-[11px] font-mono">
-                        <thead class="bg-[#111217] text-slate-500 uppercase">
-                            <tr>
-                                <th class="p-4">Waktu</th>
-                                <th class="p-4">Suhu</th>
-                                <th class="p-4">Lembab</th>
-                                <th class="p-4">CO2 (PPM)</th>
-                                <th class="p-4">Debu (µg)</th>
-                                <th class="p-4">Kualitas</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body" class="divide-y divide-[#26292e]">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
+<!-- DASHBOARD -->
+<div id="section-dashboard" class="space-y-4">
+    <div class="card-grafana p-4">
+        <p class="text-xs text-slate-400">Kondisi Udara</p>
+        <h2 id="status-label" class="text-2xl font-black">MENUNGGU...</h2>
+        <p id="last-update" class="text-xs text-slate-500"></p>
     </div>
+</div>
+
+<!-- ANALYTICS -->
+<div id="section-recap" class="hidden">
+<div class="card-grafana p-6">
+
+<!-- FILTER -->
+<div class="flex justify-between mb-4">
+    <p class="text-xs font-bold uppercase">Grafik Analitik</p>
+    <div class="flex gap-1">
+        <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec')">Live</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min')">Menit</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour')">Jam</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day')">Hari</button>
+    </div>
+</div>
+
+<!-- 4 GRAFIK -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="card-grafana p-4 h-[260px]">
+        <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
+        <canvas id="chartTemp"></canvas>
+    </div>
+    <div class="card-grafana p-4 h-[260px]">
+        <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
+        <canvas id="chartHum"></canvas>
+    </div>
+    <div class="card-grafana p-4 h-[260px]">
+        <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
+        <canvas id="chartCO2"></canvas>
+    </div>
+    <div class="card-grafana p-4 h-[260px]">
+        <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
+        <canvas id="chartDust"></canvas>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="overflow-x-auto border border-[#26292e] rounded">
+<table class="w-full text-xs">
+<thead class="bg-[#111217] text-slate-400">
+<tr>
+<th class="p-3">Waktu</th>
+<th class="p-3">Suhu</th>
+<th class="p-3">Lembab</th>
+<th class="p-3">CO₂</th>
+<th class="p-3">Debu</th>
+</tr>
+</thead>
+<tbody id="table-body"></tbody>
+</table>
+</div>
+
+</div>
+</div>
+</div>
 
 <script>
-// --- KONFIGURASI FIREBASE ---
-const firebaseConfig = {
+// FIREBASE
+firebase.initializeApp({
     apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "monitoring-kualitas-udar-8ad9d"
-};
-firebase.initializeApp(firebaseConfig);
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
+});
 const db = firebase.database();
 
-// State & Storage
-let logData = JSON.parse(localStorage.getItem('iaq_v5_logs')) || [];
+// STORAGE
+let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'sec';
 
-// --- INITIALIZE GAUGES ---
-function createGauge(id, color, max) {
-    return new Chart(document.getElementById(id), {
-        type: 'doughnut',
-        data: { datasets: [{ data: [0, max], backgroundColor: [color, '#26292e'], borderWidth: 0, circumference: 240, rotation: 240, cutout: '85%' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+// CHART BUILDER
+function createChart(id,color){
+    return new Chart(document.getElementById(id),{
+        type:'line',
+        data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+        options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+        scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'},beginAtZero:true}}}
     });
 }
-const tempGauge = createGauge('tempGauge', '#f03e3e', 50);
-const humGauge = createGauge('humGauge', '#339af0', 100);
-const co2Gauge = createGauge('co2Gauge', '#51cf66', 5000);
-const dustGauge = createGauge('dustGauge', '#fcc419', 500);
 
-// --- INITIALIZE MAIN ANALYTICS CHART ---
-const ctxMain = document.getElementById('mainChart').getContext('2d');
-const mainChart = new Chart(ctxMain, {
-    type: 'line',
-    data: { labels: [], datasets: [
-        { label: 'Suhu (°C)', data: [], borderColor: '#f03e3e', backgroundColor: 'rgba(240, 62, 62, 0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
-        { label: 'Lembab (%)', data: [], borderColor: '#339af0', backgroundColor: 'rgba(51, 154, 240, 0.1)', fill: true, tension: 0.3, yAxisID: 'y' },
-        { label: 'CO2 (PPM)', data: [], borderColor: '#51cf66', borderDash: [5,5], tension: 0.3, yAxisID: 'y1' },
-        { label: 'Debu (µg)', data: [], borderColor: '#fcc419', borderDash: [2,2], tension: 0.3, yAxisID: 'y1' }
-    ]},
-    options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        interaction: { mode: 'index', intersect: false },
-        scales: {
-            y: { type: 'linear', display: true, position: 'left', grid: { color: '#222' }, ticks: { color: '#888' }, min: 0, max: 100 },
-            y1: { type: 'linear', display: true, position: 'right', grid: { display: false }, ticks: { color: '#51cf66' }, min: 0, max: 5000 },
-            x: { grid: { display: false }, ticks: { color: '#888', font: { size: 9 } } }
-        },
-        plugins: { legend: { labels: { color: '#d8d9da', font: { size: 10 }, boxWidth: 12 } } }
-    }
-});
+const chartTemp=createChart('chartTemp','#f03e3e');
+const chartHum=createChart('chartHum','#339af0');
+const chartCO2=createChart('chartCO2','#51cf66');
+const chartDust=createChart('chartDust','#fcc419');
 
-// --- CORE LOGIC: DATA AGGREGATION ---
-function getAggregatedData(filter) {
-    if (logData.length === 0) return [];
-    const grouped = {};
-
-    logData.forEach(item => {
-        const d = new Date(item.t);
-        let key;
-        if (filter === 'sec') key = item.t_display;
-        else if (filter === 'min') key = `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-        else if (filter === 'hour') key = `${d.getDate()}/${d.getMonth()+1} ${d.getHours()}:00`;
-        else if (filter === 'day') key = `${d.getDate()}/${d.getMonth()+1}`;
-
-        if (!grouped[key]) grouped[key] = { s:[], h:[], c:[], d:[], count:0 };
-        grouped[key].s.push(item.s);
-        grouped[key].h.push(item.h);
-        grouped[key].c.push(item.c);
-        grouped[key].d.push(item.d);
+// AGGREGATE
+function getAggregatedData(){
+    const grouped={};
+    logData.forEach(d=>{
+        const t=new Date(d.t);
+        const key=currentFilter==='sec'?d.td:
+        currentFilter==='min'?`${t.getHours()}:${t.getMinutes()}`:
+        currentFilter==='hour'?`${t.getHours()}:00`:
+        `${t.getDate()}/${t.getMonth()+1}`;
+        if(!grouped[key]) grouped[key]={s:[],h:[],c:[],d:[]};
+        grouped[key].s.push(d.s);
+        grouped[key].h.push(d.h);
+        grouped[key].c.push(d.c);
+        grouped[key].d.push(d.d);
     });
-
-    return Object.keys(grouped).map(k => ({
-        time: k,
-        s: (grouped[k].s.reduce((a,b)=>a+b,0)/grouped[k].s.length).toFixed(1),
-        h: (grouped[k].h.reduce((a,b)=>a+b,0)/grouped[k].h.length).toFixed(1),
-        c: Math.round(grouped[k].c.reduce((a,b)=>a+b,0)/grouped[k].c.length),
-        d: (grouped[k].d.reduce((a,b)=>a+b,0)/grouped[k].d.length).toFixed(1)
+    return Object.keys(grouped).map(k=>({
+        time:k,
+        s:(grouped[k].s.reduce((a,b)=>a+b)/grouped[k].s.length).toFixed(1),
+        h:(grouped[k].h.reduce((a,b)=>a+b)/grouped[k].h.length).toFixed(1),
+        c:Math.round(grouped[k].c.reduce((a,b)=>a+b)/grouped[k].c.length),
+        d:(grouped[k].d.reduce((a,b)=>a+b)/grouped[k].d.length).toFixed(1)
     }));
 }
 
-function renderAnalytics() {
-    const data = getAggregatedData(currentFilter);
-    const plot = data.slice(-40); // Tampilkan 40 titik terakhir
+// RENDER
+function render(){
+    const data=getAggregatedData().slice(-40);
+    const labels=data.map(d=>d.time);
 
-    mainChart.data.labels = plot.map(d => d.time);
-    mainChart.data.datasets[0].data = plot.map(d => d.s);
-    mainChart.data.datasets[1].data = plot.map(d => d.h);
-    mainChart.data.datasets[2].data = plot.map(d => d.c);
-    mainChart.data.datasets[3].data = plot.map(d => d.d);
-    mainChart.update('none');
+    chartTemp.data.labels=labels; chartTemp.data.datasets[0].data=data.map(d=>d.s);
+    chartHum.data.labels=labels;  chartHum.data.datasets[0].data=data.map(d=>d.h);
+    chartCO2.data.labels=labels;  chartCO2.data.datasets[0].data=data.map(d=>d.c);
+    chartDust.data.labels=labels; chartDust.data.datasets[0].data=data.map(d=>d.d);
 
-    document.getElementById('table-body').innerHTML = [...data].reverse().slice(0, 50).map(d => `
-        <tr class="hover:bg-[#1e2226] transition">
-            <td class="p-4 text-slate-500">${d.time}</td>
-            <td class="p-4 text-rose-500 font-bold">${d.s}°C</td>
-            <td class="p-4 text-cyan-500 font-bold">${d.h}%</td>
-            <td class="p-4 text-emerald-500 font-bold">${d.c}</td>
-            <td class="p-4 text-amber-500 font-bold">${d.d}</td>
-            <td class="p-4">
-                <span class="px-2 py-0.5 rounded-[2px] text-[9px] font-bold ${d.c > 1000 ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'}">
-                    ${d.c > 1000 ? 'BURUK' : 'BAIK'}
-                </span>
-            </td>
-        </tr>
-    `).join('');
+    chartTemp.update('none'); chartHum.update('none');
+    chartCO2.update('none'); chartDust.update('none');
+
+    document.getElementById('table-body').innerHTML=data.reverse().map(d=>`
+        <tr>
+            <td class="p-3 text-slate-500">${d.time}</td>
+            <td class="p-3 text-rose-500">${d.s}</td>
+            <td class="p-3 text-cyan-500">${d.h}</td>
+            <td class="p-3 text-emerald-500">${d.c}</td>
+            <td class="p-3 text-amber-500">${d.d}</td>
+        </tr>`).join('');
 }
 
-// --- FIREBASE REAL-TIME LISTENER ---
-db.ref('log_sensor').limitToLast(1).on('child_added', snap => {
-    const val = snap.val();
-    if(!val) return;
-
-    const s = parseFloat(val.suhu) || 0;
-    const h = parseFloat(val.kelembapan) || 0;
-    const c = parseFloat(val.co2) || 0;
-    const d = parseFloat(val.debu) || 0;
-    const t_str = val.waktu || new Date().toLocaleTimeString();
-
-    // Update Live Dashboard
-    document.getElementById('live-suhu').innerText = s.toFixed(1);
-    document.getElementById('live-hum').innerText = h.toFixed(1);
-    document.getElementById('live-co2').innerText = Math.round(c);
-    document.getElementById('live-dust').innerText = d.toFixed(1);
-    document.getElementById('last-update').innerText = `Update: ${t_str}`;
-
-    tempGauge.data.datasets[0].data = [s, 50-s];
-    humGauge.data.datasets[0].data = [h, 100-h];
-    co2Gauge.data.datasets[0].data = [c, 5000-c];
-    dustGauge.data.datasets[0].data = [d, 500-d];
-    [tempGauge, humGauge, co2Gauge, dustGauge].forEach(g => g.update());
-
-    // Update Status Label
-    const isBad = c > 1000 || d > 150;
-    const statusLabel = document.getElementById('status-label');
-    statusLabel.innerText = isBad ? "KUALITAS UDARA BURUK" : "KUALITAS UDARA BAIK";
-    statusLabel.className = `text-2xl font-black italic tracking-tighter uppercase ${!isBad ? 'text-emerald-500' : 'text-rose-500'}`;
-    document.getElementById('dot').className = `h-2 w-2 rounded-full animate-pulse ${!isBad ? 'bg-emerald-500' : 'bg-rose-500'}`;
-    document.getElementById('conn-status').innerText = "LIVE STREAMING";
-
-    // Save & Render
-    logData.push({ t: Date.now(), t_display: t_str, s: s, h: h, c: c, d: d });
-    if(logData.length > 15000) logData.shift(); 
-    localStorage.setItem('iaq_v5_logs', JSON.stringify(logData));
-    
-    renderAnalytics();
+// LISTENER
+db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
+    const v=snap.val(); if(!v)return;
+    logData.push({
+        t:Date.now(),
+        td:v.waktu,
+        s:+v.suhu,
+        h:+v.kelembapan,
+        c:+v.co2,
+        d:+v.debu
+    });
+    if(logData.length>10000) logData.shift();
+    localStorage.setItem('iaq_logs',JSON.stringify(logData));
+    render();
 });
 
-// --- UI HELPERS ---
-function setFilter(m) {
-    currentFilter = m;
-    document.querySelectorAll('.f-btn').forEach(b => {
-        b.classList.remove('active-filter', 'text-white');
-        b.classList.add('text-slate-500');
-    });
-    event.target.classList.add('active-filter', 'text-white');
-    renderAnalytics();
-}
-
-function showSection(id) {
-    document.getElementById('section-dashboard').classList.toggle('hidden', id !== 'dashboard');
-    document.getElementById('section-recap').classList.toggle('hidden', id !== 'recap');
-    document.querySelectorAll('nav button').forEach(b => b.classList.remove('nav-active'));
-    document.getElementById('btn-' + id).classList.add('nav-active');
-    if(id === 'recap') setTimeout(() => mainChart.update(), 100);
-}
-
-function downloadCSV() {
-    const data = getAggregatedData(currentFilter);
-    let csv = "Waktu,Suhu(C),Kelembaban(%),CO2(PPM),Debu(ug)\n";
-    data.forEach(d => csv += `${d.time},${d.s},${d.h},${d.c},${d.d}\n`);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = `IAQ_Report_${currentFilter}_${new Date().toISOString().slice(0,10)}.csv`;
-    a.click();
+// UI
+function setFilter(f){currentFilter=f;render();}
+function showSection(id){
+    section-dashboard.classList.toggle('hidden',id!=='dashboard');
+    section-recap.classList.toggle('hidden',id!=='recap');
+    btn-dashboard.classList.toggle('nav-active',id==='dashboard');
+    btn-recap.classList.toggle('nav-active',id==='recap');
 }
 </script>
 </body>
