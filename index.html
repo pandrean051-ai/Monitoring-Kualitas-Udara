@@ -113,24 +113,54 @@ const db = firebase.database();
 let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'sec';
 
-// CHART BUILDER
-function createChart(id,color){
+// CHART BUILDER DENGAN LABEL Sumbu
+function createChart(id,color,xLabel,yLabel){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+    data:{
+      labels:[],
+      datasets:[{
+        data:[],
+        borderColor:color,
+        backgroundColor:color+'33',
+        fill:true,
+        tension:.3
+      }]
+    },
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'},beginAtZero:true}}
+      scales:{
+        x:{
+          ticks:{color:'#888'},
+          title:{
+            display:true,
+            text:xLabel,
+            color:'#888',
+            font:{size:12, weight:'bold'}
+          }
+        },
+        y:{
+          ticks:{color:'#888'},
+          beginAtZero:true,
+          title:{
+            display:true,
+            text:yLabel,
+            color:'#888',
+            font:{size:12, weight:'bold'}
+          }
+        }
+      }
     }
   });
 }
 
-const chartTemp=createChart('chartTemp','#f03e3e');
-const chartHum=createChart('chartHum','#339af0');
-const chartCO2=createChart('chartCO2','#51cf66');
-const chartDust=createChart('chartDust','#fcc419');
+// INISIALISASI CHART
+const chartTemp=createChart('chartTemp','#f03e3e','Waktu','Suhu (°C)');
+const chartHum=createChart('chartHum','#339af0','Waktu','Kelembapan (%)');
+const chartCO2=createChart('chartCO2','#51cf66','Waktu','CO₂ (PPM)');
+const chartDust=createChart('chartDust','#fcc419','Waktu','Debu (µg/m³)');
 
 // AGGREGATE
 function getAggregatedData(){
@@ -233,4 +263,3 @@ function showSection(id){
 
 </body>
 </html>
-
