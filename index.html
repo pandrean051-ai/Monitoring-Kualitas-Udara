@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MONITORING KUALITAS UDARA - Analytics</title>
+<title>IAQ PRO - Analytics</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -24,10 +24,7 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 
 <!-- HEADER -->
 <header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
-  <h1 class="text-xl font-black text-white">
-    MONITORING KUALITAS UDARA
-    <span class="text-[#3274d9] text-xs">KELOMPOK 11</span>
-  </h1>
+  <h1 class="text-xl font-black text-white">IAQ PRO <span class="text-[#3274d9] text-xs">v5.0</span></h1>
   <nav class="flex gap-6">
     <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
     <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
@@ -49,7 +46,7 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 
 <!-- FILTER -->
 <div class="flex justify-between mb-4">
-  <p class="text-xs font-bold uppercase">Grafik Data</p>
+  <p class="text-xs font-bold uppercase">Grafik Analitik</p>
   <div class="flex gap-1">
     <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
     <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
@@ -62,18 +59,22 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
   <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
     <canvas id="chartTemp"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
     <canvas id="chartHum"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
     <canvas id="chartCO2"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
     <canvas id="chartDust"></canvas>
   </div>
 
@@ -112,54 +113,24 @@ const db = firebase.database();
 let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'sec';
 
-// CHART BUILDER (ADA LABEL X & Y)
-function createChart(id, color, yLabel){
+// CHART BUILDER
+function createChart(id,color){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{
-      labels:[],
-      datasets:[{
-        data:[],
-        borderColor:color,
-        backgroundColor:color+'33',
-        fill:true,
-        tension:0.3
-      }]
-    },
+    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{ legend:{display:false} },
-      scales:{
-        x:{
-          ticks:{ color:'#888' },
-          title:{
-            display:true,
-            text:'Waktu',
-            color:'#aaa',
-            font:{ size:11, weight:'bold' }
-          }
-        },
-        y:{
-          beginAtZero:true,
-          ticks:{ color:'#888' },
-          title:{
-            display:true,
-            text:yLabel,
-            color:'#aaa',
-            font:{ size:11, weight:'bold' }
-          }
-        }
-      }
+      plugins:{legend:{display:false}},
+      scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'},beginAtZero:true}}
     }
   });
 }
 
-// INIT CHART
-const chartTemp = createChart('chartTemp','#f03e3e','Suhu (°C)');
-const chartHum  = createChart('chartHum','#339af0','Kelembapan (%)');
-const chartCO2  = createChart('chartCO2','#51cf66','CO₂ (PPM)');
-const chartDust = createChart('chartDust','#fcc419','Debu (µg/m³)');
+const chartTemp=createChart('chartTemp','#f03e3e');
+const chartHum=createChart('chartHum','#339af0');
+const chartCO2=createChart('chartCO2','#51cf66');
+const chartDust=createChart('chartDust','#fcc419');
 
 // AGGREGATE
 function getAggregatedData(){
@@ -232,8 +203,8 @@ db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
   if(logData.length>10000) logData.shift();
   localStorage.setItem('iaq_logs',JSON.stringify(logData));
 
-  status-label.textContent=`CO₂ ${v.co2} ppm`;
-  last-update.textContent=`Update ${new Date().toLocaleTimeString()}`;
+  document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
+  document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
 
   render();
 });
@@ -247,12 +218,19 @@ function setFilter(f,el){
 }
 
 function showSection(id){
-  section-dashboard.classList.toggle('hidden',id!=='dashboard');
-  section-recap.classList.toggle('hidden',id!=='recap');
-  btn-dashboard.classList.toggle('nav-active',id==='dashboard');
-  btn-recap.classList.toggle('nav-active',id==='recap');
+  const dash=document.getElementById('section-dashboard');
+  const recap=document.getElementById('section-recap');
+  const bd=document.getElementById('btn-dashboard');
+  const br=document.getElementById('btn-recap');
+
+  dash.classList.toggle('hidden',id!=='dashboard');
+  recap.classList.toggle('hidden',id!=='recap');
+
+  bd.classList.toggle('nav-active',id==='dashboard');
+  br.classList.toggle('nav-active',id==='recap');
 }
 </script>
 
 </body>
 </html>
+
