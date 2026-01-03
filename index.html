@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>IAQ PRO - Analytics</title>
+<title>IAQ PRO v5.0</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -12,10 +12,47 @@
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
-.card-grafana{background:#181b1f;border:1px solid #26292e;border-radius:4px}
-.nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
-.active-filter{background:#3274d9;color:white}
+
+body{
+  background:#0b0e14;
+  font-family:Inter,sans-serif;
+  color:#d8d9da
+}
+.card{
+  background:#181b1f;
+  border:1px solid #26292e;
+  border-radius:6px
+}
+.nav-active{
+  border-bottom:3px solid #3274d9;
+  color:#3274d9
+}
+.active-filter{
+  background:#3274d9;
+  color:white
+}
+
+/* LABEL AXIS */
+.axis-label{
+  position:absolute;
+  background:#fff;
+  color:#000;
+  font-size:11px;
+  font-weight:700;
+  padding:4px 10px;
+  border-radius:6px;
+  z-index:10
+}
+.axis-y{
+  left:-42px;
+  top:50%;
+  transform:translateY(-50%) rotate(-90deg)
+}
+.axis-x{
+  bottom:-30px;
+  left:50%;
+  transform:translateX(-50%)
+}
 </style>
 </head>
 
@@ -23,30 +60,32 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 <div class="max-w-7xl mx-auto">
 
 <!-- HEADER -->
-<header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
-  <h1 class="text-xl font-black text-white">IAQ PRO <span class="text-[#3274d9] text-xs">v5.0</span></h1>
+<header class="flex justify-between items-center mb-6 card p-4">
+  <h1 class="text-xl font-black text-white">
+    IAQ PRO <span class="text-[#3274d9] text-xs">v5.0</span>
+  </h1>
   <nav class="flex gap-6">
     <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
-    <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
+    <button id="btn-analytic" onclick="showSection('analytic')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
   </nav>
 </header>
 
 <!-- DASHBOARD -->
-<div id="section-dashboard" class="space-y-4">
-  <div class="card-grafana p-4">
-    <p class="text-xs text-slate-400">Kondisi Udara</p>
-    <h2 id="status-label" class="text-2xl font-black">MENUNGGU DATA...</h2>
-    <p id="last-update" class="text-xs text-slate-500"></p>
+<section id="section-dashboard">
+  <div class="card p-5">
+    <p class="text-xs text-slate-400">Status Udara</p>
+    <h2 id="status" class="text-2xl font-black">MENUNGGU DATA...</h2>
+    <p id="update" class="text-xs text-slate-500"></p>
   </div>
-</div>
+</section>
 
-<!-- ANALYTICS -->
-<div id="section-recap" class="hidden">
-<div class="card-grafana p-6">
+<!-- ANALITIK -->
+<section id="section-analytic" class="hidden">
+<div class="card p-6">
 
 <!-- FILTER -->
 <div class="flex justify-between mb-4">
-  <p class="text-xs font-bold uppercase">Grafik Analitik</p>
+  <p class="text-xs font-bold uppercase">Grafik Data</p>
   <div class="flex gap-1">
     <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
     <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
@@ -55,179 +94,148 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
   </div>
 </div>
 
-<!-- 4 GRAFIK -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+<!-- GRID GRAFIK -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
 
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
-    <canvas id="chartTemp"></canvas>
-  </div>
-
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
-    <canvas id="chartHum"></canvas>
-  </div>
-
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
-    <canvas id="chartCO2"></canvas>
-  </div>
-
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
-    <canvas id="chartDust"></canvas>
-  </div>
-
+<!-- SUHU -->
+<div class="card p-4 h-[260px] relative">
+  <div class="axis-label axis-y">Suhu (°C)</div>
+  <div class="axis-label axis-x">Waktu</div>
+  <canvas id="chartTemp"></canvas>
 </div>
 
-<!-- TABLE -->
-<div class="overflow-x-auto border border-[#26292e] rounded">
-<table class="w-full text-xs">
-<thead class="bg-[#111217] text-slate-400">
-<tr>
-  <th class="p-3">Waktu</th>
-  <th class="p-3">Suhu</th>
-  <th class="p-3">Lembab</th>
-  <th class="p-3">CO₂</th>
-  <th class="p-3">Debu</th>
-</tr>
-</thead>
-<tbody id="table-body"></tbody>
-</table>
+<!-- KELEMBAPAN -->
+<div class="card p-4 h-[260px] relative">
+  <div class="axis-label axis-y">Kelembapan (%)</div>
+  <div class="axis-label axis-x">Waktu</div>
+  <canvas id="chartHum"></canvas>
+</div>
+
+<!-- CO2 -->
+<div class="card p-4 h-[260px] relative">
+  <div class="axis-label axis-y">CO₂ (PPM)</div>
+  <div class="axis-label axis-x">Waktu</div>
+  <canvas id="chartCO2"></canvas>
+</div>
+
+<!-- DEBU -->
+<div class="card p-4 h-[260px] relative">
+  <div class="axis-label axis-y">Debu (µg/m³)</div>
+  <div class="axis-label axis-x">Waktu</div>
+  <canvas id="chartDust"></canvas>
 </div>
 
 </div>
+
 </div>
+</section>
 
 </div>
 
 <script>
 // FIREBASE
 firebase.initializeApp({
-  apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-  databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
+  apiKey:"AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+  databaseURL:"https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-const db = firebase.database();
+const db=firebase.database();
 
 // STORAGE
-let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-let currentFilter = 'sec';
+let logs=JSON.parse(localStorage.getItem('iaq_logs'))||[];
+let filter='sec';
 
-// CHART BUILDER
-function createChart(id,color){
+// CHART
+function makeChart(id,color){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+    data:{labels:[],datasets:[{
+      data:[],
+      borderColor:color,
+      backgroundColor:color+'33',
+      fill:true,
+      tension:.3
+    }]},
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'},beginAtZero:true}}
+      scales:{
+        x:{ticks:{color:'#888'}},
+        y:{ticks:{color:'#888'},beginAtZero:true}
+      }
     }
   });
 }
 
-const chartTemp=createChart('chartTemp','#f03e3e');
-const chartHum=createChart('chartHum','#339af0');
-const chartCO2=createChart('chartCO2','#51cf66');
-const chartDust=createChart('chartDust','#fcc419');
+const cTemp=makeChart('chartTemp','#f03e3e');
+const cHum =makeChart('chartHum','#339af0');
+const cCO2 =makeChart('chartCO2','#51cf66');
+const cDust=makeChart('chartDust','#fcc419');
 
-// AGGREGATE
-function getAggregatedData(){
-  const grouped={};
-  logData.forEach(d=>{
+// AGREGASI
+function aggregate(){
+  const g={};
+  logs.forEach(d=>{
     const t=new Date(d.t);
-    const key =
-      currentFilter==='sec'? d.td :
-      currentFilter==='min'? `${t.getHours()}:${t.getMinutes()}` :
-      currentFilter==='hour'? `${t.getHours()}:00` :
+    const k=
+      filter==='sec'?d.ts:
+      filter==='min'?`${t.getHours()}:${t.getMinutes()}`:
+      filter==='hour'?`${t.getHours()}:00`:
       `${t.getDate()}/${t.getMonth()+1}`;
-
-    if(!grouped[key]) grouped[key]={s:[],h:[],c:[],d:[]};
-    grouped[key].s.push(d.s);
-    grouped[key].h.push(d.h);
-    grouped[key].c.push(d.c);
-    grouped[key].d.push(d.d);
+    if(!g[k])g[k]={s:[],h:[],c:[],d:[]};
+    g[k].s.push(d.s);
+    g[k].h.push(d.h);
+    g[k].c.push(d.c);
+    g[k].d.push(d.d);
   });
-
-  return Object.keys(grouped).map(k=>({
-    time:k,
-    s:(grouped[k].s.reduce((a,b)=>a+b)/grouped[k].s.length).toFixed(1),
-    h:(grouped[k].h.reduce((a,b)=>a+b)/grouped[k].h.length).toFixed(1),
-    c:Math.round(grouped[k].c.reduce((a,b)=>a+b)/grouped[k].c.length),
-    d:(grouped[k].d.reduce((a,b)=>a+b)/grouped[k].d.length).toFixed(1)
+  return Object.keys(g).map(k=>({
+    t:k,
+    s:(g[k].s.reduce((a,b)=>a+b)/g[k].s.length).toFixed(1),
+    h:(g[k].h.reduce((a,b)=>a+b)/g[k].h.length).toFixed(1),
+    c:Math.round(g[k].c.reduce((a,b)=>a+b)/g[k].c.length),
+    d:(g[k].d.reduce((a,b)=>a+b)/g[k].d.length).toFixed(1)
   }));
 }
 
 // RENDER
 function render(){
-  const data=getAggregatedData().slice(-40);
-  const labels=data.map(d=>d.time);
-
-  chartTemp.data.labels=labels;
-  chartHum.data.labels=labels;
-  chartCO2.data.labels=labels;
-  chartDust.data.labels=labels;
-
-  chartTemp.data.datasets[0].data=data.map(d=>d.s);
-  chartHum.data.datasets[0].data=data.map(d=>d.h);
-  chartCO2.data.datasets[0].data=data.map(d=>d.c);
-  chartDust.data.datasets[0].data=data.map(d=>d.d);
-
-  chartTemp.update('none');
-  chartHum.update('none');
-  chartCO2.update('none');
-  chartDust.update('none');
-
-  document.getElementById('table-body').innerHTML=data.reverse().map(d=>`
-    <tr>
-      <td class="p-3 text-slate-500">${d.time}</td>
-      <td class="p-3 text-rose-500">${d.s}</td>
-      <td class="p-3 text-cyan-500">${d.h}</td>
-      <td class="p-3 text-emerald-500">${d.c}</td>
-      <td class="p-3 text-amber-500">${d.d}</td>
-    </tr>`).join('');
+  const d=aggregate().slice(-30);
+  const l=d.map(x=>x.t);
+  [cTemp,cHum,cCO2,cDust].forEach(c=>c.data.labels=l);
+  cTemp.data.datasets[0].data=d.map(x=>x.s);
+  cHum.data.datasets[0].data=d.map(x=>x.h);
+  cCO2.data.datasets[0].data=d.map(x=>x.c);
+  cDust.data.datasets[0].data=d.map(x=>x.d);
+  [cTemp,cHum,cCO2,cDust].forEach(c=>c.update('none'));
 }
 
 // LISTENER
-db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
-  const v=snap.val(); if(!v)return;
-  logData.push({
+db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
+  const v=s.val(); if(!v)return;
+  logs.push({
     t:Date.now(),
-    td:v.waktu || new Date().toLocaleTimeString(),
-    s:+v.suhu,
-    h:+v.kelembapan,
-    c:+v.co2,
-    d:+v.debu
+    ts:v.waktu||new Date().toLocaleTimeString(),
+    s:+v.suhu,h:+v.kelembapan,c:+v.co2,d:+v.debu
   });
-  if(logData.length>10000) logData.shift();
-  localStorage.setItem('iaq_logs',JSON.stringify(logData));
-
-  document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
-  document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
-
+  if(logs.length>10000)logs.shift();
+  localStorage.setItem('iaq_logs',JSON.stringify(logs));
+  document.getElementById('status').textContent=`CO₂ ${v.co2} ppm`;
+  document.getElementById('update').textContent=`Update ${new Date().toLocaleTimeString()}`;
   render();
 });
 
 // UI
-function setFilter(f,el){
-  currentFilter=f;
+function setFilter(f,e){
+  filter=f;
   document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-  el.classList.add('active-filter');
+  e.classList.add('active-filter');
   render();
 }
-
-function showSection(id){
-  const dash=document.getElementById('section-dashboard');
-  const recap=document.getElementById('section-recap');
-  const bd=document.getElementById('btn-dashboard');
-  const br=document.getElementById('btn-recap');
-
-  dash.classList.toggle('hidden',id!=='dashboard');
-  recap.classList.toggle('hidden',id!=='recap');
-
-  bd.classList.toggle('nav-active',id==='dashboard');
-  br.classList.toggle('nav-active',id==='recap');
+function showSection(s){
+  document.getElementById('section-dashboard').classList.toggle('hidden',s!=='dashboard');
+  document.getElementById('section-analytic').classList.toggle('hidden',s!=='analytic');
+  document.getElementById('btn-dashboard').classList.toggle('nav-active',s==='dashboard');
+  document.getElementById('btn-analytic').classList.toggle('nav-active',s==='analytic');
 }
 </script>
 
