@@ -24,7 +24,10 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 
 <!-- HEADER -->
 <header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
-  <h1 class="text-xl font-black text-white">MONITORING KUALITAS UDARA <span class="text-[#3274d9] text-xs">KELOMPOK 11</span></h1>
+  <h1 class="text-xl font-black text-white">
+    MONITORING KUALITAS UDARA
+    <span class="text-[#3274d9] text-xs">KELOMPOK 11</span>
+  </h1>
   <nav class="flex gap-6">
     <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
     <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
@@ -59,22 +62,18 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
   <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
     <canvas id="chartTemp"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
     <canvas id="chartHum"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
     <canvas id="chartCO2"></canvas>
   </div>
 
   <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
     <canvas id="chartDust"></canvas>
   </div>
 
@@ -113,24 +112,54 @@ const db = firebase.database();
 let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'sec';
 
-// CHART BUILDER
-function createChart(id,color){
+// CHART BUILDER (ADA LABEL X & Y)
+function createChart(id, color, yLabel){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+    data:{
+      labels:[],
+      datasets:[{
+        data:[],
+        borderColor:color,
+        backgroundColor:color+'33',
+        fill:true,
+        tension:0.3
+      }]
+    },
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'},beginAtZero:true}}
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{
+          ticks:{ color:'#888' },
+          title:{
+            display:true,
+            text:'Waktu',
+            color:'#aaa',
+            font:{ size:11, weight:'bold' }
+          }
+        },
+        y:{
+          beginAtZero:true,
+          ticks:{ color:'#888' },
+          title:{
+            display:true,
+            text:yLabel,
+            color:'#aaa',
+            font:{ size:11, weight:'bold' }
+          }
+        }
+      }
     }
   });
 }
 
-const chartTemp=createChart('chartTemp','#f03e3e');
-const chartHum=createChart('chartHum','#339af0');
-const chartCO2=createChart('chartCO2','#51cf66');
-const chartDust=createChart('chartDust','#fcc419');
+// INIT CHART
+const chartTemp = createChart('chartTemp','#f03e3e','Suhu (°C)');
+const chartHum  = createChart('chartHum','#339af0','Kelembapan (%)');
+const chartCO2  = createChart('chartCO2','#51cf66','CO₂ (PPM)');
+const chartDust = createChart('chartDust','#fcc419','Debu (µg/m³)');
 
 // AGGREGATE
 function getAggregatedData(){
@@ -203,8 +232,8 @@ db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
   if(logData.length>10000) logData.shift();
   localStorage.setItem('iaq_logs',JSON.stringify(logData));
 
-  document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
-  document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
+  status-label.textContent=`CO₂ ${v.co2} ppm`;
+  last-update.textContent=`Update ${new Date().toLocaleTimeString()}`;
 
   render();
 });
@@ -218,16 +247,10 @@ function setFilter(f,el){
 }
 
 function showSection(id){
-  const dash=document.getElementById('section-dashboard');
-  const recap=document.getElementById('section-recap');
-  const bd=document.getElementById('btn-dashboard');
-  const br=document.getElementById('btn-recap');
-
-  dash.classList.toggle('hidden',id!=='dashboard');
-  recap.classList.toggle('hidden',id!=='recap');
-
-  bd.classList.toggle('nav-active',id==='dashboard');
-  br.classList.toggle('nav-active',id==='recap');
+  section-dashboard.classList.toggle('hidden',id!=='dashboard');
+  section-recap.classList.toggle('hidden',id!=='recap');
+  btn-dashboard.classList.toggle('nav-active',id==='dashboard');
+  btn-recap.classList.toggle('nav-active',id==='recap');
 }
 </script>
 
