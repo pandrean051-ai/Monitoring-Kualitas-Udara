@@ -34,12 +34,11 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
   </nav>
 </header>
 
-<!-- ================= DASHBOARD ================= -->
+<!-- DASHBOARD -->
 <div id="section-dashboard" class="space-y-4">
 
-<!-- FRAME DATA SENSOR (TAMBAHAN) -->
+<!-- FRAME DATA SENSOR -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-
   <div class="card-grafana p-4">
     <p class="text-xs text-rose-400">Suhu</p>
     <h3 id="dash-temp" class="text-2xl font-black">-- °C</h3>
@@ -59,10 +58,9 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
     <p class="text-xs text-amber-400">Debu</p>
     <h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3>
   </div>
-
 </div>
 
-<!-- STATUS -->
+<!-- STATUS UDARA -->
 <div class="card-grafana p-4">
   <p class="text-xs text-slate-400">Kondisi Udara</p>
   <h2 id="status-label" class="text-2xl font-black">MENUNGGU DATA...</h2>
@@ -71,62 +69,58 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 
 </div>
 
-<!-- ================= ANALYTICS (TIDAK DIUBAH) ================= -->
+<!-- ANALYTICS (TIDAK DIUBAH) -->
 <div id="section-recap" class="hidden">
 <div class="card-grafana p-6">
-
-<!-- FILTER -->
-<div class="flex justify-between mb-4">
-  <p class="text-xs font-bold uppercase">Grafik Data</p>
-  <div class="flex gap-1">
-    <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
-    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
-    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
-    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
-  </div>
-</div>
-
-<!-- 4 GRAFIK -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
-    <canvas id="chartTemp"></canvas>
+  <!-- FILTER -->
+  <div class="flex justify-between mb-4">
+    <p class="text-xs font-bold uppercase">Grafik Data</p>
+    <div class="flex gap-1">
+      <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
+    </div>
   </div>
 
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
-    <canvas id="chartHum"></canvas>
+  <!-- 4 GRAFIK -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
+      <canvas id="chartTemp"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
+      <canvas id="chartHum"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
+      <canvas id="chartCO2"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
+      <canvas id="chartDust"></canvas>
+    </div>
   </div>
 
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
-    <canvas id="chartCO2"></canvas>
+  <!-- TABLE -->
+  <div class="overflow-x-auto border border-[#26292e] rounded">
+    <table class="w-full text-xs">
+      <thead class="bg-[#111217] text-slate-400">
+        <tr>
+          <th class="p-3">Waktu</th>
+          <th class="p-3">Suhu</th>
+          <th class="p-3">Lembab</th>
+          <th class="p-3">CO₂</th>
+          <th class="p-3">Debu</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
   </div>
-
-  <div class="card-grafana p-4 h-[260px]">
-    <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
-    <canvas id="chartDust"></canvas>
-  </div>
-
-</div>
-
-<!-- TABLE -->
-<div class="overflow-x-auto border border-[#26292e] rounded">
-<table class="w-full text-xs">
-<thead class="bg-[#111217] text-slate-400">
-<tr>
-  <th class="p-3">Waktu</th>
-  <th class="p-3">Suhu</th>
-  <th class="p-3">Lembab</th>
-  <th class="p-3">CO₂</th>
-  <th class="p-3">Debu</th>
-</tr>
-</thead>
-<tbody id="table-body"></tbody>
-</table>
-</div>
-
 </div>
 </div>
 
@@ -167,7 +161,7 @@ const chartHum=createChart('chartHum','#339af0','Waktu','Kelembapan (%)');
 const chartCO2=createChart('chartCO2','#51cf66','Waktu','CO₂ (PPM)');
 const chartDust=createChart('chartDust','#fcc419','Waktu','Debu (µg/m³)');
 
-// AGGREGATE & RENDER (ASLI)
+// AGGREGATE & RENDER
 function getAggregatedData(){
   const grouped={};
   logData.forEach(d=>{
@@ -223,27 +217,40 @@ function render(){
     </tr>`).join('');
 }
 
-// LISTENER (DITAMBAH UPDATE DASHBOARD)
-db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
-  const v=snap.val(); if(!v)return;
+// LISTENER FIREBASE + STATUS UDARA
+db.ref('log_sensor').limitToLast(1).on('child_added', snap => {
+  const v = snap.val();
+  if(!v) return;
 
+  // Update dashboard angka
   document.getElementById('dash-temp').textContent = `${v.suhu} °C`;
   document.getElementById('dash-hum').textContent  = `${v.kelembapan} %`;
   document.getElementById('dash-co2').textContent  = `${v.co2} ppm`;
   document.getElementById('dash-dust').textContent = `${v.debu} µg/m³`;
 
-  logData.push({
-    t:Date.now(),
-    td:v.waktu || new Date().toLocaleTimeString(),
-    s:+v.suhu,
-    h:+v.kelembapan,
-    c:+v.co2,
-    d:+v.debu
-  });
+  // Update STATUS udara
+  const statusEl = document.getElementById('status-label');
+  const status = v.status || "TIDAK DIKETAHUI";
+  statusEl.textContent = `UDARA ${status}`;
 
-  localStorage.setItem('iaq_logs',JSON.stringify(logData));
-  document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
-  document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
+  if(status === "BAIK") statusEl.className = "text-2xl font-black text-emerald-400";
+  else if(status === "BURUK") statusEl.className = "text-2xl font-black text-rose-500";
+  else statusEl.className = "text-2xl font-black text-slate-400";
+
+  document.getElementById('last-update').textContent = `Update ${new Date().toLocaleTimeString()}`;
+
+  // Update analytics (tidak diubah)
+  logData.push({
+    t: Date.now(),
+    td: v.waktu || new Date().toLocaleTimeString(),
+    s: +v.suhu,
+    h: +v.kelembapan,
+    c: +v.co2,
+    d: +v.debu
+  });
+  if(logData.length > 10000) logData.shift();
+  localStorage.setItem('iaq_logs', JSON.stringify(logData));
+
   render();
 });
 
