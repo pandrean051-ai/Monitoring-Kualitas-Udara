@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoring Kualitas Udara</title>
+<title>MONITORING KUALITAS UDARA - Analytics</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -13,156 +13,252 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
-.card { background:#181b1f; border:1px solid #26292e; border-radius:6px }
-.nav-active { border-bottom:3px solid #3274d9; color:#3274d9 }
-.active-filter { background:#3274d9; color:#fff }
-button { cursor:pointer }
+.card-grafana{background:#181b1f;border:1px solid #26292e;border-radius:4px}
+.nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
+.active-filter{background:#3274d9;color:white}
 </style>
 </head>
 
-<body class="p-6">
+<body class="p-4 lg:p-8">
 <div class="max-w-7xl mx-auto">
 
 <!-- HEADER -->
-<header class="flex justify-between items-center mb-6 card p-4">
-  <h1 class="text-xl font-black text-white">
-    MONITORING KUALITAS UDARA
-    <span class="block text-xs text-[#3274d9]">Kelompok 11</span>
-  </h1>
+<header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
+  <h1 class="text-xl font-black text-white">MONITORING KUALITAS UDARA <span class="text-[#3274d9] text-xs">Kelompok 11</span></h1>
   <nav class="flex gap-6">
-    <button id="btn-dashboard" class="nav-active text-xs font-bold uppercase">Monitor</button>
-    <button id="btn-recap" class="text-xs font-bold uppercase text-slate-400">Analitik</button>
+    <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
+    <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
   </nav>
 </header>
 
 <!-- DASHBOARD -->
-<section id="section-dashboard" class="space-y-4">
-  <div class="card p-5">
-    <p class="text-xs text-slate-400">Kondisi Udara Saat Ini</p>
-    <h2 id="status-label" class="text-3xl font-black">MENUNGGU DATA...</h2>
-    <p id="last-update" class="text-xs text-slate-500 mt-1"></p>
+<div id="section-dashboard" class="space-y-4">
+  <div class="card-grafana p-4">
+    <p class="text-xs text-slate-400">Kondisi Udara</p>
+    <h2 id="status-label" class="text-2xl font-black">MENUNGGU DATA...</h2>
+    <p id="last-update" class="text-xs text-slate-500"></p>
   </div>
-</section>
+</div>
 
-<!-- ANALITIK -->
-<section id="section-recap" class="hidden">
-<div class="card p-6">
+<!-- ANALYTICS -->
+<div id="section-recap" class="hidden">
+<div class="card-grafana p-6">
 
 <!-- FILTER -->
 <div class="flex justify-between mb-4">
   <p class="text-xs font-bold uppercase">Grafik Data</p>
   <div class="flex gap-1">
-    <button class="f-btn active-filter px-3 py-1 text-xs">Live</button>
-    <button class="f-btn px-3 py-1 text-xs">Menit</button>
-    <button class="f-btn px-3 py-1 text-xs">Jam</button>
-    <button class="f-btn px-3 py-1 text-xs">Hari</button>
+    <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
+    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
+    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
+    <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
   </div>
 </div>
 
-<!-- GRAFIK -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <div class="card p-4 h-[250px]"><canvas id="chartTemp"></canvas></div>
-  <div class="card p-4 h-[250px]"><canvas id="chartHum"></canvas></div>
-  <div class="card p-4 h-[250px]"><canvas id="chartCO2"></canvas></div>
-  <div class="card p-4 h-[250px]"><canvas id="chartDust"></canvas></div>
+<!-- 4 GRAFIK -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+
+  <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
+    <canvas id="chartTemp"></canvas>
+  </div>
+
+  <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
+    <canvas id="chartHum"></canvas>
+  </div>
+
+  <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
+    <canvas id="chartCO2"></canvas>
+  </div>
+
+  <div class="card-grafana p-4 h-[260px]">
+    <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
+    <canvas id="chartDust"></canvas>
+  </div>
+
+</div>
+
+<!-- TABLE -->
+<div class="overflow-x-auto border border-[#26292e] rounded">
+<table class="w-full text-xs">
+<thead class="bg-[#111217] text-slate-400">
+<tr>
+  <th class="p-3">Waktu</th>
+  <th class="p-3">Suhu</th>
+  <th class="p-3">Lembab</th>
+  <th class="p-3">CO₂</th>
+  <th class="p-3">Debu</th>
+</tr>
+</thead>
+<tbody id="table-body"></tbody>
+</table>
 </div>
 
 </div>
-</section>
+</div>
 
 </div>
 
 <script>
-// ================= FIREBASE =================
+// FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
   databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
 const db = firebase.database();
 
-// ================= DATA =================
-let logData = [];
+// STORAGE
+let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter = 'sec';
 
-// ================= CHART =================
-function createChart(id,color){
+// CHART BUILDER DENGAN LABEL Sumbu
+function createChart(id,color,xLabel,yLabel){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+    data:{
+      labels:[],
+      datasets:[{
+        data:[],
+        borderColor:color,
+        backgroundColor:color+'33',
+        fill:true,
+        tension:.3
+      }]
+    },
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
-      scales:{x:{ticks:{color:'#777'}},y:{ticks:{color:'#777'},beginAtZero:true}}
+      scales:{
+        x:{
+          ticks:{color:'#888'},
+          title:{
+            display:true,
+            text:xLabel,
+            color:'#888',
+            font:{size:12, weight:'bold'}
+          }
+        },
+        y:{
+          ticks:{color:'#888'},
+          beginAtZero:true,
+          title:{
+            display:true,
+            text:yLabel,
+            color:'#888',
+            font:{size:12, weight:'bold'}
+          }
+        }
+      }
     }
   });
 }
 
-const chartTemp = createChart('chartTemp','#ef4444');
-const chartHum  = createChart('chartHum','#3b82f6');
-const chartCO2  = createChart('chartCO2','#22c55e');
-const chartDust = createChart('chartDust','#facc15');
+// INISIALISASI CHART
+const chartTemp=createChart('chartTemp','#f03e3e','Waktu','Suhu (°C)');
+const chartHum=createChart('chartHum','#339af0','Waktu','Kelembapan (%)');
+const chartCO2=createChart('chartCO2','#51cf66','Waktu','CO₂ (PPM)');
+const chartDust=createChart('chartDust','#fcc419','Waktu','Debu (µg/m³)');
 
-// ================= RENDER =================
-function render(){
-  const data = logData.slice(-30);
-  const labels = data.map(d=>d.td);
+// AGGREGATE
+function getAggregatedData(){
+  const grouped={};
+  logData.forEach(d=>{
+    const t=new Date(d.t);
+    const key =
+      currentFilter==='sec'? d.td :
+      currentFilter==='min'? `${t.getHours()}:${t.getMinutes()}` :
+      currentFilter==='hour'? `${t.getHours()}:00` :
+      `${t.getDate()}/${t.getMonth()+1}`;
 
-  chartTemp.data.labels = labels;
-  chartHum.data.labels  = labels;
-  chartCO2.data.labels  = labels;
-  chartDust.data.labels = labels;
-
-  chartTemp.data.datasets[0].data = data.map(d=>d.s);
-  chartHum.data.datasets[0].data  = data.map(d=>d.h);
-  chartCO2.data.datasets[0].data  = data.map(d=>d.c);
-  chartDust.data.datasets[0].data = data.map(d=>d.d);
-
-  chartTemp.update();
-  chartHum.update();
-  chartCO2.update();
-  chartDust.update();
-}
-
-// ================= FIREBASE LISTENER =================
-db.ref('log_sensor').limitToLast(1).on('child_added', snap=>{
-  const v = snap.val();
-  if(!v) return;
-
-  logData.push({
-    td: v.waktu || new Date().toLocaleTimeString(),
-    s: Number(v.suhu) || 0,
-    h: Number(v.kelembapan) || 0,
-    c: Number(v.co2) || 0,
-    d: Number(v.debu) || 0
+    if(!grouped[key]) grouped[key]={s:[],h:[],c:[],d:[]};
+    grouped[key].s.push(d.s);
+    grouped[key].h.push(d.h);
+    grouped[key].c.push(d.c);
+    grouped[key].d.push(d.d);
   });
 
-  document.getElementById('status-label').textContent = `CO₂ ${v.co2} ppm`;
-  document.getElementById('last-update').textContent =
-    `Update ${new Date().toLocaleTimeString()}`;
+  return Object.keys(grouped).map(k=>({
+    time:k,
+    s:(grouped[k].s.reduce((a,b)=>a+b)/grouped[k].s.length).toFixed(1),
+    h:(grouped[k].h.reduce((a,b)=>a+b)/grouped[k].h.length).toFixed(1),
+    c:Math.round(grouped[k].c.reduce((a,b)=>a+b)/grouped[k].c.length),
+    d:(grouped[k].d.reduce((a,b)=>a+b)/grouped[k].d.length).toFixed(1)
+  }));
+}
+
+// RENDER
+function render(){
+  const data=getAggregatedData().slice(-40);
+  const labels=data.map(d=>d.time);
+
+  chartTemp.data.labels=labels;
+  chartHum.data.labels=labels;
+  chartCO2.data.labels=labels;
+  chartDust.data.labels=labels;
+
+  chartTemp.data.datasets[0].data=data.map(d=>d.s);
+  chartHum.data.datasets[0].data=data.map(d=>d.h);
+  chartCO2.data.datasets[0].data=data.map(d=>d.c);
+  chartDust.data.datasets[0].data=data.map(d=>d.d);
+
+  chartTemp.update('none');
+  chartHum.update('none');
+  chartCO2.update('none');
+  chartDust.update('none');
+
+  document.getElementById('table-body').innerHTML=data.reverse().map(d=>`
+    <tr>
+      <td class="p-3 text-slate-500">${d.time}</td>
+      <td class="p-3 text-rose-500">${d.s}</td>
+      <td class="p-3 text-cyan-500">${d.h}</td>
+      <td class="p-3 text-emerald-500">${d.c}</td>
+      <td class="p-3 text-amber-500">${d.d}</td>
+    </tr>`).join('');
+}
+
+// LISTENER
+db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
+  const v=snap.val(); if(!v)return;
+  logData.push({
+    t:Date.now(),
+    td:v.waktu || new Date().toLocaleTimeString(),
+    s:+v.suhu,
+    h:+v.kelembapan,
+    c:+v.co2,
+    d:+v.debu
+  });
+  if(logData.length>10000) logData.shift();
+  localStorage.setItem('iaq_logs',JSON.stringify(logData));
+
+  document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
+  document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
 
   render();
 });
 
-// ================= NAVIGATION (FIXED) =================
-const btnDashboard = document.getElementById('btn-dashboard');
-const btnRecap     = document.getElementById('btn-recap');
-const secDashboard = document.getElementById('section-dashboard');
-const secRecap     = document.getElementById('section-recap');
+// UI
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
+  el.classList.add('active-filter');
+  render();
+}
 
-btnDashboard.onclick = () => {
-  secDashboard.classList.remove('hidden');
-  secRecap.classList.add('hidden');
-  btnDashboard.classList.add('nav-active');
-  btnRecap.classList.remove('nav-active');
-};
+function showSection(id){
+  const dash=document.getElementById('section-dashboard');
+  const recap=document.getElementById('section-recap');
+  const bd=document.getElementById('btn-dashboard');
+  const br=document.getElementById('btn-recap');
 
-btnRecap.onclick = () => {
-  secDashboard.classList.add('hidden');
-  secRecap.classList.remove('hidden');
-  btnDashboard.classList.remove('nav-active');
-  btnRecap.classList.add('nav-active');
-};
+  dash.classList.toggle('hidden',id!=='dashboard');
+  recap.classList.toggle('hidden',id!=='recap');
+
+  bd.classList.toggle('nav-active',id==='dashboard');
+  br.classList.toggle('nav-active',id==='recap');
+}
 </script>
 
 </body>
