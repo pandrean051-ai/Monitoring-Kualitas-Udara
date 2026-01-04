@@ -12,7 +12,7 @@
 
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
+body{background:#0b0e14;font-family:Inter,sans-serif;color:#d8d9da}
 .card-grafana{background:#181b1f;border:1px solid #26292e;border-radius:4px}
 .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
 .active-filter{background:#3274d9;color:white}
@@ -24,23 +24,54 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 
 <!-- HEADER -->
 <header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
-  <h1 class="text-xl font-black text-white">MONITORING KUALITAS UDARA <span class="text-[#3274d9] text-xs">Kelompok 11</span></h1>
+  <h1 class="text-xl font-black text-white">
+    MONITORING KUALITAS UDARA 
+    <span class="text-[#3274d9] text-xs">Kelompok 11</span>
+  </h1>
   <nav class="flex gap-6">
     <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
     <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
   </nav>
 </header>
 
-<!-- DASHBOARD -->
+<!-- ================= DASHBOARD ================= -->
 <div id="section-dashboard" class="space-y-4">
+
+<!-- FRAME RINGKASAN -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+
   <div class="card-grafana p-4">
-    <p class="text-xs text-slate-400">Kondisi Udara</p>
-    <h2 id="status-label" class="text-2xl font-black">MENUNGGU DATA...</h2>
-    <p id="last-update" class="text-xs text-slate-500"></p>
+    <p class="text-xs text-rose-400">Suhu</p>
+    <h3 id="val-temp" class="text-2xl font-black">-- °C</h3>
   </div>
+
+  <div class="card-grafana p-4">
+    <p class="text-xs text-cyan-400">Kelembapan</p>
+    <h3 id="val-hum" class="text-2xl font-black">-- %</h3>
+  </div>
+
+  <div class="card-grafana p-4">
+    <p class="text-xs text-emerald-400">CO₂</p>
+    <h3 id="val-co2" class="text-2xl font-black">-- ppm</h3>
+  </div>
+
+  <div class="card-grafana p-4">
+    <p class="text-xs text-amber-400">Debu</p>
+    <h3 id="val-dust" class="text-2xl font-black">-- µg/m³</h3>
+  </div>
+
 </div>
 
-<!-- ANALYTICS -->
+<!-- STATUS -->
+<div class="card-grafana p-4">
+  <p class="text-xs text-slate-400">Kondisi Udara</p>
+  <h2 id="status-label" class="text-2xl font-black">MENUNGGU DATA...</h2>
+  <p id="last-update" class="text-xs text-slate-500"></p>
+</div>
+
+</div>
+
+<!-- ================= ANALYTICS ================= -->
 <div id="section-recap" class="hidden">
 <div class="card-grafana p-6">
 
@@ -55,9 +86,8 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
   </div>
 </div>
 
-<!-- 4 GRAFIK -->
+<!-- GRAFIK -->
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-
   <div class="card-grafana p-4 h-[260px]">
     <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
     <canvas id="chartTemp"></canvas>
@@ -77,7 +107,6 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
     <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
     <canvas id="chartDust"></canvas>
   </div>
-
 </div>
 
 <!-- TABLE -->
@@ -107,159 +136,109 @@ firebase.initializeApp({
   apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
   databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-const db = firebase.database();
+const db=firebase.database();
 
 // STORAGE
-let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-let currentFilter = 'sec';
+let logData=JSON.parse(localStorage.getItem('iaq_logs'))||[];
+let currentFilter='sec';
 
-// CHART BUILDER DENGAN LABEL Sumbu
-function createChart(id,color,xLabel,yLabel){
+// CHART
+function createChart(id,color,yLabel){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{
-      labels:[],
-      datasets:[{
-        data:[],
-        borderColor:color,
-        backgroundColor:color+'33',
-        fill:true,
-        tension:.3
-      }]
-    },
+    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
     options:{
       responsive:true,
       maintainAspectRatio:false,
       plugins:{legend:{display:false}},
       scales:{
-        x:{
-          ticks:{color:'#888'},
-          title:{
-            display:true,
-            text:xLabel,
-            color:'#888',
-            font:{size:12, weight:'bold'}
-          }
-        },
-        y:{
-          ticks:{color:'#888'},
-          beginAtZero:true,
-          title:{
-            display:true,
-            text:yLabel,
-            color:'#888',
-            font:{size:12, weight:'bold'}
-          }
-        }
+        x:{ticks:{color:'#888'}},
+        y:{ticks:{color:'#888'},beginAtZero:true,title:{display:true,text:yLabel,color:'#888'}}
       }
     }
   });
 }
 
-// INISIALISASI CHART
-const chartTemp=createChart('chartTemp','#f03e3e','Waktu','Suhu (°C)');
-const chartHum=createChart('chartHum','#339af0','Waktu','Kelembapan (%)');
-const chartCO2=createChart('chartCO2','#51cf66','Waktu','CO₂ (PPM)');
-const chartDust=createChart('chartDust','#fcc419','Waktu','Debu (µg/m³)');
+const chartTemp=createChart('chartTemp','#f03e3e','°C');
+const chartHum=createChart('chartHum','#339af0','%');
+const chartCO2=createChart('chartCO2','#51cf66','PPM');
+const chartDust=createChart('chartDust','#fcc419','µg/m³');
 
 // AGGREGATE
 function getAggregatedData(){
-  const grouped={};
+  const g={};
   logData.forEach(d=>{
     const t=new Date(d.t);
-    const key =
-      currentFilter==='sec'? d.td :
-      currentFilter==='min'? `${t.getHours()}:${t.getMinutes()}` :
-      currentFilter==='hour'? `${t.getHours()}:00` :
+    const k=currentFilter==='sec'?d.td:
+      currentFilter==='min'?`${t.getHours()}:${t.getMinutes()}`:
+      currentFilter==='hour'?`${t.getHours()}:00`:
       `${t.getDate()}/${t.getMonth()+1}`;
-
-    if(!grouped[key]) grouped[key]={s:[],h:[],c:[],d:[]};
-    grouped[key].s.push(d.s);
-    grouped[key].h.push(d.h);
-    grouped[key].c.push(d.c);
-    grouped[key].d.push(d.d);
+    if(!g[k])g[k]={s:[],h:[],c:[],d:[]};
+    g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);
   });
-
-  return Object.keys(grouped).map(k=>({
+  return Object.keys(g).map(k=>({
     time:k,
-    s:(grouped[k].s.reduce((a,b)=>a+b)/grouped[k].s.length).toFixed(1),
-    h:(grouped[k].h.reduce((a,b)=>a+b)/grouped[k].h.length).toFixed(1),
-    c:Math.round(grouped[k].c.reduce((a,b)=>a+b)/grouped[k].c.length),
-    d:(grouped[k].d.reduce((a,b)=>a+b)/grouped[k].d.length).toFixed(1)
+    s:(g[k].s.reduce((a,b)=>a+b)/g[k].s.length).toFixed(1),
+    h:(g[k].h.reduce((a,b)=>a+b)/g[k].h.length).toFixed(1),
+    c:Math.round(g[k].c.reduce((a,b)=>a+b)/g[k].c.length),
+    d:(g[k].d.reduce((a,b)=>a+b)/g[k].d.length).toFixed(1)
   }));
 }
 
 // RENDER
 function render(){
-  const data=getAggregatedData().slice(-40);
-  const labels=data.map(d=>d.time);
+  const d=getAggregatedData().slice(-40);
+  const l=d.map(x=>x.time);
+  chartTemp.data.labels=l;chartHum.data.labels=l;
+  chartCO2.data.labels=l;chartDust.data.labels=l;
+  chartTemp.data.datasets[0].data=d.map(x=>x.s);
+  chartHum.data.datasets[0].data=d.map(x=>x.h);
+  chartCO2.data.datasets[0].data=d.map(x=>x.c);
+  chartDust.data.datasets[0].data=d.map(x=>x.d);
+  chartTemp.update('none');chartHum.update('none');
+  chartCO2.update('none');chartDust.update('none');
 
-  chartTemp.data.labels=labels;
-  chartHum.data.labels=labels;
-  chartCO2.data.labels=labels;
-  chartDust.data.labels=labels;
-
-  chartTemp.data.datasets[0].data=data.map(d=>d.s);
-  chartHum.data.datasets[0].data=data.map(d=>d.h);
-  chartCO2.data.datasets[0].data=data.map(d=>d.c);
-  chartDust.data.datasets[0].data=data.map(d=>d.d);
-
-  chartTemp.update('none');
-  chartHum.update('none');
-  chartCO2.update('none');
-  chartDust.update('none');
-
-  document.getElementById('table-body').innerHTML=data.reverse().map(d=>`
+  document.getElementById('table-body').innerHTML=d.reverse().map(x=>`
     <tr>
-      <td class="p-3 text-slate-500">${d.time}</td>
-      <td class="p-3 text-rose-500">${d.s}</td>
-      <td class="p-3 text-cyan-500">${d.h}</td>
-      <td class="p-3 text-emerald-500">${d.c}</td>
-      <td class="p-3 text-amber-500">${d.d}</td>
+      <td class="p-3 text-slate-500">${x.time}</td>
+      <td class="p-3 text-rose-500">${x.s}</td>
+      <td class="p-3 text-cyan-500">${x.h}</td>
+      <td class="p-3 text-emerald-500">${x.c}</td>
+      <td class="p-3 text-amber-500">${x.d}</td>
     </tr>`).join('');
 }
 
-// LISTENER
-db.ref('log_sensor').limitToLast(1).on('child_added',snap=>{
-  const v=snap.val(); if(!v)return;
-  logData.push({
-    t:Date.now(),
-    td:v.waktu || new Date().toLocaleTimeString(),
-    s:+v.suhu,
-    h:+v.kelembapan,
-    c:+v.co2,
-    d:+v.debu
-  });
-  if(logData.length>10000) logData.shift();
-  localStorage.setItem('iaq_logs',JSON.stringify(logData));
+// FIREBASE LISTENER
+db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
+  const v=s.val(); if(!v)return;
+
+  document.getElementById('val-temp').textContent=`${v.suhu} °C`;
+  document.getElementById('val-hum').textContent=`${v.kelembapan} %`;
+  document.getElementById('val-co2').textContent=`${v.co2} ppm`;
+  document.getElementById('val-dust').textContent=`${v.debu} µg/m³`;
 
   document.getElementById('status-label').textContent=`CO₂ ${v.co2} ppm`;
   document.getElementById('last-update').textContent=`Update ${new Date().toLocaleTimeString()}`;
 
+  logData.push({t:Date.now(),td:v.waktu||new Date().toLocaleTimeString(),s:+v.suhu,h:+v.kelembapan,c:+v.co2,d:+v.debu});
+  if(logData.length>10000)logData.shift();
+  localStorage.setItem('iaq_logs',JSON.stringify(logData));
   render();
 });
 
 // UI
-function setFilter(f,el){
+function setFilter(f,e){
   currentFilter=f;
   document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-  el.classList.add('active-filter');
+  e.classList.add('active-filter');
   render();
 }
-
 function showSection(id){
-  const dash=document.getElementById('section-dashboard');
-  const recap=document.getElementById('section-recap');
-  const bd=document.getElementById('btn-dashboard');
-  const br=document.getElementById('btn-recap');
-
-  dash.classList.toggle('hidden',id!=='dashboard');
-  recap.classList.toggle('hidden',id!=='recap');
-
-  bd.classList.toggle('nav-active',id==='dashboard');
-  br.classList.toggle('nav-active',id==='recap');
+  section-dashboard.classList.toggle('hidden',id!=='dashboard');
+  section-recap.classList.toggle('hidden',id!=='recap');
+  btn-dashboard.classList.toggle('nav-active',id==='dashboard');
+  btn-recap.classList.toggle('nav-active',id==='recap');
 }
 </script>
-
 </body>
 </html>
