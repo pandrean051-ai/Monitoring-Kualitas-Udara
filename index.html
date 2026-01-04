@@ -255,10 +255,16 @@ function setFilter(f,el){
   render();
 }
 function showSection(id){
-  section-dashboard.classList.toggle('hidden',id!=='dashboard');
-  section-recap.classList.toggle('hidden',id!=='recap');
-  btn-dashboard.classList.toggle('nav-active',id==='dashboard');
-  btn-recap.classList.toggle('nav-active',id==='recap');
+  const dash  = document.getElementById('section-dashboard');
+  const recap = document.getElementById('section-recap');
+  const bd    = document.getElementById('btn-dashboard');
+  const br    = document.getElementById('btn-recap');
+
+  dash.classList.toggle('hidden', id !== 'dashboard');
+  recap.classList.toggle('hidden', id !== 'recap');
+
+  bd.classList.toggle('nav-active', id === 'dashboard');
+  br.classList.toggle('nav-active', id === 'recap');
 }
 </script>
 </body>
