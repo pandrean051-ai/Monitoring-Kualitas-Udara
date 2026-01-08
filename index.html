@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoring Kualitas Udara</title>
+<title>MONITORING KUALITAS UDARA - Analytics</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -22,30 +22,38 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
 <body class="p-4 lg:p-8">
 <div class="max-w-7xl mx-auto">
 
+<!-- HEADER -->
 <header class="flex justify-between items-center mb-6 bg-[#111217] p-4 border border-[#26292e]">
   <h1 class="text-xl font-black text-white">
     MONITORING KUALITAS UDARA 
     <span class="text-[#3274d9] text-xs">Kelompok 11</span>
   </h1>
+  <nav class="flex gap-6">
+    <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold uppercase">Monitor</button>
+    <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold uppercase text-slate-500">Analitik</button>
+  </nav>
 </header>
 
 <!-- DASHBOARD -->
-<div class="space-y-4">
+<div id="section-dashboard" class="space-y-4">
 
-<!-- DATA SENSOR -->
+<!-- FRAME DATA SENSOR -->
 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
   <div class="card-grafana p-4">
     <p class="text-xs text-rose-400">Suhu</p>
     <h3 id="dash-temp" class="text-2xl font-black">-- °C</h3>
   </div>
+
   <div class="card-grafana p-4">
     <p class="text-xs text-cyan-400">Kelembapan</p>
     <h3 id="dash-hum" class="text-2xl font-black">-- %</h3>
   </div>
+
   <div class="card-grafana p-4">
     <p class="text-xs text-emerald-400">CO₂</p>
     <h3 id="dash-co2" class="text-2xl font-black">-- ppm</h3>
   </div>
+
   <div class="card-grafana p-4">
     <p class="text-xs text-amber-400">Debu</p>
     <h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3>
@@ -59,62 +67,212 @@ body { background:#0b0e14; font-family:Inter,sans-serif; color:#d8d9da }
   <p id="last-update" class="text-xs text-slate-500"></p>
 </div>
 
-<!-- FRAME UDARA BURUK -->
-<div id="bad-air-frame" class="card-grafana p-4 hidden border border-rose-500">
-  <p class="text-xs text-rose-400">⚠️ Peringatan</p>
-  <h2 class="text-2xl font-black text-rose-500">
-    KUALITAS UDARA BURUK
-  </h2>
-  <p class="text-xs text-slate-400 mt-1">
-    Gunakan masker dan batasi aktivitas luar ruangan.
-  </p>
 </div>
 
+<!-- ANALYTICS (TIDAK DIUBAH) -->
+<div id="section-recap" class="hidden">
+<div class="card-grafana p-6">
+  <!-- FILTER -->
+  <div class="flex justify-between mb-4">
+    <p class="text-xs font-bold uppercase">Grafik Data</p>
+    <div class="flex gap-1">
+      <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
+      <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
+    </div>
+  </div>
+
+  <!-- 4 GRAFIK -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-rose-500 mb-2">Suhu (°C)</p>
+      <canvas id="chartTemp"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-cyan-500 mb-2">Kelembapan (%)</p>
+      <canvas id="chartHum"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-emerald-500 mb-2">CO₂ (PPM)</p>
+      <canvas id="chartCO2"></canvas>
+    </div>
+
+    <div class="card-grafana p-4 h-[260px]">
+      <p class="text-xs text-amber-500 mb-2">Debu (µg/m³)</p>
+      <canvas id="chartDust"></canvas>
+    </div>
+  </div>
+
+  <!-- TABLE -->
+  <div class="overflow-x-auto border border-[#26292e] rounded">
+    <table class="w-full text-xs">
+      <thead class="bg-[#111217] text-slate-400">
+        <tr>
+          <th class="p-3">Waktu</th>
+          <th class="p-3">Suhu</th>
+          <th class="p-3">Lembab</th>
+          <th class="p-3">CO₂</th>
+          <th class="p-3">Debu</th>
+        </tr>
+      </thead>
+      <tbody id="table-body"></tbody>
+    </table>
+  </div>
 </div>
+</div>
+
 </div>
 
 <script>
-// FIREBASE CONFIG
+// FIREBASE
 firebase.initializeApp({
   apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
   databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
 });
-
 const db = firebase.database();
 
-// LISTENER SENSOR
+// STORAGE
+let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
+let currentFilter = 'sec';
+
+// CHART BUILDER
+function createChart(id,color,xLabel,yLabel){
+  return new Chart(document.getElementById(id),{
+    type:'line',
+    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#888'},title:{display:true,text:xLabel,color:'#888'}},
+        y:{ticks:{color:'#888'},beginAtZero:true,title:{display:true,text:yLabel,color:'#888'}}
+      }
+    }
+  });
+}
+
+// INISIALISASI CHART
+const chartTemp=createChart('chartTemp','#f03e3e','Waktu','Suhu (°C)');
+const chartHum=createChart('chartHum','#339af0','Waktu','Kelembapan (%)');
+const chartCO2=createChart('chartCO2','#51cf66','Waktu','CO₂ (PPM)');
+const chartDust=createChart('chartDust','#fcc419','Waktu','Debu (µg/m³)');
+
+// AGGREGATE & RENDER
+function getAggregatedData(){
+  const grouped={};
+  logData.forEach(d=>{
+    const t=new Date(d.t);
+    const key =
+      currentFilter==='sec'? d.td :
+      currentFilter==='min'? `${t.getHours()}:${t.getMinutes()}` :
+      currentFilter==='hour'? `${t.getHours()}:00` :
+      `${t.getDate()}/${t.getMonth()+1}`;
+
+    if(!grouped[key]) grouped[key]={s:[],h:[],c:[],d:[]};
+    grouped[key].s.push(d.s);
+    grouped[key].h.push(d.h);
+    grouped[key].c.push(d.c);
+    grouped[key].d.push(d.d);
+  });
+
+  return Object.keys(grouped).map(k=>({
+    time:k,
+    s:(grouped[k].s.reduce((a,b)=>a+b)/grouped[k].s.length).toFixed(1),
+    h:(grouped[k].h.reduce((a,b)=>a+b)/grouped[k].h.length).toFixed(1),
+    c:Math.round(grouped[k].c.reduce((a,b)=>a+b)/grouped[k].c.length),
+    d:(grouped[k].d.reduce((a,b)=>a+b)/grouped[k].d.length).toFixed(1)
+  }));
+}
+
+function render(){
+  const data=getAggregatedData().slice(-40);
+  const labels=data.map(d=>d.time);
+
+  chartTemp.data.labels=labels;
+  chartHum.data.labels=labels;
+  chartCO2.data.labels=labels;
+  chartDust.data.labels=labels;
+
+  chartTemp.data.datasets[0].data=data.map(d=>d.s);
+  chartHum.data.datasets[0].data=data.map(d=>d.h);
+  chartCO2.data.datasets[0].data=data.map(d=>d.c);
+  chartDust.data.datasets[0].data=data.map(d=>d.d);
+
+  chartTemp.update('none');
+  chartHum.update('none');
+  chartCO2.update('none');
+  chartDust.update('none');
+
+  document.getElementById('table-body').innerHTML=data.reverse().map(d=>`
+    <tr>
+      <td class="p-3 text-slate-500">${d.time}</td>
+      <td class="p-3 text-rose-500">${d.s}</td>
+      <td class="p-3 text-cyan-500">${d.h}</td>
+      <td class="p-3 text-emerald-500">${d.c}</td>
+      <td class="p-3 text-amber-500">${d.d}</td>
+    </tr>`).join('');
+}
+
+// LISTENER FIREBASE + STATUS UDARA
 db.ref('log_sensor').limitToLast(1).on('child_added', snap => {
   const v = snap.val();
   if(!v) return;
 
+  // Update dashboard angka
   document.getElementById('dash-temp').textContent = `${v.suhu} °C`;
   document.getElementById('dash-hum').textContent  = `${v.kelembapan} %`;
   document.getElementById('dash-co2').textContent  = `${v.co2} ppm`;
   document.getElementById('dash-dust').textContent = `${v.debu} µg/m³`;
 
+  // Update STATUS udara
   const statusEl = document.getElementById('status-label');
-  const badFrame = document.getElementById('bad-air-frame');
-  const status   = v.status || "TIDAK DIKETAHUI";
-
+  const status = v.status || "TIDAK DIKETAHUI";
   statusEl.textContent = `UDARA ${status}`;
 
-  if(status === "BAIK"){
-    statusEl.className = "text-2xl font-black text-emerald-400";
-    badFrame.classList.add('hidden');
-  }
-  else if(status === "BURUK"){
-    statusEl.className = "text-2xl font-black text-rose-500";
-    badFrame.classList.remove('hidden');
-  }
-  else{
-    statusEl.className = "text-2xl font-black text-slate-400";
-    badFrame.classList.add('hidden');
-  }
+  if(status === "BAIK") statusEl.className = "text-2xl font-black text-emerald-400";
+  else if(status === "BURUK") statusEl.className = "text-2xl font-black text-rose-500";
+  else statusEl.className = "text-2xl font-black text-slate-400";
 
-  document.getElementById('last-update').textContent =
-    `Update ${new Date().toLocaleTimeString()}`;
+  document.getElementById('last-update').textContent = `Update ${new Date().toLocaleTimeString()}`;
+
+  // Update analytics (tidak diubah)
+  logData.push({
+    t: Date.now(),
+    td: v.waktu || new Date().toLocaleTimeString(),
+    s: +v.suhu,
+    h: +v.kelembapan,
+    c: +v.co2,
+    d: +v.debu
+  });
+  if(logData.length > 10000) logData.shift();
+  localStorage.setItem('iaq_logs', JSON.stringify(logData));
+
+  render();
 });
-</script>
 
+// UI
+function setFilter(f,el){
+  currentFilter=f;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
+  el.classList.add('active-filter');
+  render();
+}
+function showSection(id){
+  const dash  = document.getElementById('section-dashboard');
+  const recap = document.getElementById('section-recap');
+  const bd    = document.getElementById('btn-dashboard');
+  const br    = document.getElementById('btn-recap');
+
+  dash.classList.toggle('hidden', id !== 'dashboard');
+  recap.classList.toggle('hidden', id !== 'recap');
+
+  bd.classList.toggle('nav-active', id === 'dashboard');
+  br.classList.toggle('nav-active', id === 'recap');
+}
+</script>
 </body>
 </html>
