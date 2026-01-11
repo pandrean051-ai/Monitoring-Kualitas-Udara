@@ -33,7 +33,7 @@ body{background:#0b0e14;font-family:Inter;color:#d8d9da}
   </nav>
 </header>
 
-<!-- DASHBOARD -->
+<!-- ================= DASHBOARD ================= -->
 <div id="section-dashboard" class="space-y-4">
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div class="card p-4"><p class="text-xs text-rose-400">Suhu</p><h3 id="dash-temp" class="text-2xl font-black">-- °C</h3></div>
@@ -49,7 +49,7 @@ body{background:#0b0e14;font-family:Inter;color:#d8d9da}
   </div>
 </div>
 
-<!-- ANALITIK -->
+<!-- ================= ANALITIK ================= -->
 <div id="section-recap" class="hidden">
 <div class="card p-6">
 
@@ -76,10 +76,10 @@ body{background:#0b0e14;font-family:Inter;color:#d8d9da}
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <div class="card p-4 h-[250px]"><p class="text-xs text-rose-500">Suhu</p><canvas id="chartTemp"></canvas></div>
-  <div class="card p-4 h-[250px]"><p class="text-xs text-cyan-500">Kelembapan</p><canvas id="chartHum"></canvas></div>
-  <div class="card p-4 h-[250px]"><p class="text-xs text-emerald-500">CO₂</p><canvas id="chartCO2"></canvas></div>
-  <div class="card p-4 h-[250px]"><p class="text-xs text-amber-500">Debu</p><canvas id="chartDust"></canvas></div>
+  <div class="card p-4 h-[260px]"><p class="text-xs text-rose-500">Suhu</p><canvas id="chartTemp"></canvas></div>
+  <div class="card p-4 h-[260px]"><p class="text-xs text-cyan-500">Kelembapan</p><canvas id="chartHum"></canvas></div>
+  <div class="card p-4 h-[260px]"><p class="text-xs text-emerald-500">CO₂</p><canvas id="chartCO2"></canvas></div>
+  <div class="card p-4 h-[260px]"><p class="text-xs text-amber-500">Debu</p><canvas id="chartDust"></canvas></div>
 </div>
 
 <table class="w-full text-xs border border-[#26292e]">
@@ -100,7 +100,7 @@ body{background:#0b0e14;font-family:Inter;color:#d8d9da}
 </div>
 
 <script>
-// ================= FIREBASE (SAMA DENGAN PROGRAM DI ATAS) =================
+// ================= FIREBASE =================
 firebase.initializeApp({
   apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
   databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
@@ -111,18 +111,53 @@ const db = firebase.database();
 let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
 let currentFilter='sec', historyLimit=50, pageOffset=0;
 
-// ================= CHART =================
-function buildChart(id,color){
+// ================= CHART BUILDER (ADA LABEL X & Y) =================
+function buildChart(id,color,yLabel){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
+    data:{
+      labels:[],
+      datasets:[{
+        data:[],
+        borderColor:color,
+        backgroundColor:color+'33',
+        fill:true,
+        tension:0.3
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        x:{
+          ticks:{color:'#888',font:{size:10}},
+          title:{
+            display:true,
+            text:'Waktu Pengukuran',
+            color:'#aaa',
+            font:{size:11,weight:'bold'}
+          }
+        },
+        y:{
+          ticks:{color:'#888'},
+          beginAtZero:true,
+          title:{
+            display:true,
+            text:yLabel,
+            color:'#aaa',
+            font:{size:11,weight:'bold'}
+          }
+        }
+      }
+    }
   });
 }
-const chartTemp=buildChart('chartTemp','#f03e3e');
-const chartHum=buildChart('chartHum','#339af0');
-const chartCO2=buildChart('chartCO2','#51cf66');
-const chartDust=buildChart('chartDust','#fcc419');
+
+const chartTemp = buildChart('chartTemp','#f03e3e','Suhu (°C)');
+const chartHum  = buildChart('chartHum','#339af0','Kelembapan (%)');
+const chartCO2  = buildChart('chartCO2','#51cf66','CO₂ (ppm)');
+const chartDust = buildChart('chartDust','#fcc419','Debu (µg/m³)');
 
 // ================= AGGREGATE =================
 function getAggregated(){
@@ -162,7 +197,10 @@ function render(){
   chartCO2.data.datasets[0].data=view.map(v=>v.c);
   chartDust.data.datasets[0].data=view.map(v=>v.d);
 
-  chartTemp.update();chartHum.update();chartCO2.update();chartDust.update();
+  chartTemp.update();
+  chartHum.update();
+  chartCO2.update();
+  chartDust.update();
 
   document.getElementById('table-body').innerHTML=view.reverse().map(v=>`
     <tr>
