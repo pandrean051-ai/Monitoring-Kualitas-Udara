@@ -1,212 +1,44 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Monitoring Kualitas Udara</title>
-
-<script src="https://cdn.tailwindcss.com"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-body{background:#0b0e14;font-family:Inter;color:#d8d9da}
-.card{background:#181b1f;border:1px solid #26292e;border-radius:4px}
-.nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
-.active-filter{background:#3274d9;color:#fff}
-</style>
-</head>
-
-<body class="p-4 lg:p-8">
-<div class="max-w-7xl mx-auto">
-
-<header class="flex justify-between items-center mb-6 card p-4">
-  <h1 class="text-xl font-black text-white">
-    MONITORING KUALITAS UDARA
-    <span class="text-xs text-blue-500">Kelompok 11</span>
-  </h1>
-  <nav class="flex gap-6">
-    <button onclick="showSection('dashboard')" class="nav-active text-xs font-bold" id="btn-dashboard">MONITOR</button>
-    <button onclick="showSection('recap')" class="text-xs font-bold text-slate-500" id="btn-recap">ANALITIK</button>
-  </nav>
-</header>
-
-<!-- ================= DASHBOARD ================= -->
-<div id="section-dashboard" class="space-y-4">
-  <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-    <div class="card p-4"><p class="text-xs text-rose-400">Suhu</p><h3 id="dash-temp" class="text-2xl font-black">-- °C</h3></div>
-    <div class="card p-4"><p class="text-xs text-cyan-400">Kelembapan</p><h3 id="dash-hum" class="text-2xl font-black">-- %</h3></div>
-    <div class="card p-4"><p class="text-xs text-emerald-400">CO₂</p><h3 id="dash-co2" class="text-2xl font-black">-- ppm</h3></div>
-    <div class="card p-4"><p class="text-xs text-amber-400">Debu</p><h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3></div>
-  </div>
-
-  <div class="card p-4">
-    <p class="text-xs text-slate-400 font-bold">Kondisi Udara</p>
-    <h2 id="status" class="text-2xl font-black text-slate-500">MENUNGGU DATA</h2>
-    <p id="last-update" class="text-[10px] text-slate-600 italic mt-2"></p>
-  </div>
-</div>
-
-<!-- ================= ANALITIK ================= -->
-<div id="section-recap" class="hidden">
-<div class="card p-6">
-
-<div class="flex flex-wrap gap-2 items-center mb-4">
-  <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
-</div>
-
-<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <div class="card p-4 h-[260px]"><canvas id="chartTemp"></canvas></div>
-  <div class="card p-4 h-[260px]"><canvas id="chartHum"></canvas></div>
-  <div class="card p-4 h-[260px]"><canvas id="chartCO2"></canvas></div>
-  <div class="card p-4 h-[260px]"><canvas id="chartDust"></canvas></div>
-</div>
-
-<table class="w-full text-xs border border-[#26292e]">
-<thead class="bg-[#111217]">
-<tr>
-<th class="p-2 text-left">Waktu</th>
-<th class="p-2">Suhu</th>
-<th class="p-2">Hum</th>
-<th class="p-2">CO₂</th>
-<th class="p-2">Debu</th>
-</tr>
-</thead>
-<tbody id="table-body"></tbody>
-</table>
-
-</div>
-</div>
-</div>
-
-<script>
-// ================= FIREBASE =================
-firebase.initializeApp({
-  apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-  databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
-});
-const db = firebase.database();
-
-// ================= DATA =================
-let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-let currentFilter = 'sec';
-
-// ================= CHART =================
-function makeChart(id,color,label){
-  return new Chart(document.getElementById(id),{
-    type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:.3}]},
-    options:{
-      responsive:true,
-      maintainAspectRatio:false,
-      plugins:{legend:{display:false}},
-      scales:{
-        x:{title:{display:true,text:'Waktu'}},
-        y:{title:{display:true,text:label},beginAtZero:true}
-      }
-    }
-  });
-}
-
-const chartTemp = makeChart('chartTemp','#f03e3e','Suhu (°C)');
-const chartHum  = makeChart('chartHum','#339af0','Kelembapan (%)');
-const chartCO2  = makeChart('chartCO2','#51cf66','CO₂ (ppm)');
-const chartDust = makeChart('chartDust','#fcc419','Debu (µg/m³)');
-
-// ================= AGGREGATE =================
 function getAggregated(){
   const g={};
 
   logData.forEach(d=>{
     const t = new Date(d.t);
-    const date = t.toLocaleDateString('id-ID');
     let k;
 
-    if(currentFilter==='sec'){
+    const date = t.toLocaleDateString('id-ID');
+
+    if(currentFilter === 'sec'){
       k = t.toLocaleString('id-ID');
-    } else if(currentFilter==='min'){
-      k = date+' '+t.getHours().toString().padStart(2,'0')+':'+
+    }
+
+    if(currentFilter === 'min'){
+      k = date + ' ' +
+          t.getHours().toString().padStart(2,'0') + ':' +
           t.getMinutes().toString().padStart(2,'0');
-    } else if(currentFilter==='hour'){
-      k = date+' '+t.getHours().toString().padStart(2,'0')+':00';
-    } else {
+    }
+
+    if(currentFilter === 'hour'){
+      k = date + ' ' +
+          t.getHours().toString().padStart(2,'0') + ':00';
+    }
+
+    if(currentFilter === 'day'){
       k = date;
     }
 
-    if(!g[k]) g[k]={s:[],h:[],c:[],d:[]};
-    g[k].s.push(d.s); g[k].h.push(d.h); g[k].c.push(d.c); g[k].d.push(d.d);
+    if(!g[k]) g[k] = {s:[],h:[],c:[],d:[]};
+
+    g[k].s.push(d.s);
+    g[k].h.push(d.h);
+    g[k].c.push(d.c);
+    g[k].d.push(d.d);
   });
 
   return Object.keys(g).map(k=>({
     time:k,
-    s:avg(g[k].s), h:avg(g[k].h),
-    c:Math.round(avg(g[k].c)), d:avg(g[k].d)
+    s:(avg(g[k].s)).toFixed(1),
+    h:(avg(g[k].h)).toFixed(1),
+    c:Math.round(avg(g[k].c)),
+    d:(avg(g[k].d)).toFixed(1)
   }));
 }
-
-const avg=a=>a.reduce((x,y)=>x+y)/a.length;
-
-// ================= RENDER =================
-function render(){
-  const data=getAggregated().slice(-40);
-
-  chartTemp.data.labels=data.map(v=>v.time);
-  chartHum.data.labels=data.map(v=>v.time);
-  chartCO2.data.labels=data.map(v=>v.time);
-  chartDust.data.labels=data.map(v=>v.time);
-
-  chartTemp.data.datasets[0].data=data.map(v=>v.s);
-  chartHum.data.datasets[0].data=data.map(v=>v.h);
-  chartCO2.data.datasets[0].data=data.map(v=>v.c);
-  chartDust.data.datasets[0].data=data.map(v=>v.d);
-
-  chartTemp.update(); chartHum.update();
-  chartCO2.update(); chartDust.update();
-
-  document.getElementById('table-body').innerHTML=data.reverse().map(v=>`
-    <tr>
-      <td class="p-2">${v.time}</td>
-      <td class="p-2">${v.s.toFixed(1)}</td>
-      <td class="p-2">${v.h.toFixed(1)}</td>
-      <td class="p-2">${v.c}</td>
-      <td class="p-2">${v.d.toFixed(1)}</td>
-    </tr>`).join('');
-}
-
-// ================= FIREBASE LISTENER =================
-db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
-  const v=s.val(); if(!v) return;
-
-  dash-temp.textContent=v.suhu+' °C';
-  dash-hum.textContent=v.kelembapan+' %';
-  dash-co2.textContent=v.co2+' ppm';
-  dash-dust.textContent=v.debu+' µg/m³';
-
-  status.textContent=(v.status||'NORMAL').toUpperCase();
-  last-update.textContent=new Date().toLocaleString();
-
-  logData.push({t:Date.now(),s:+v.suhu,h:+v.kelembapan,c:+v.co2,d:+v.debu});
-  localStorage.setItem('iaq_logs',JSON.stringify(logData));
-
-  render();
-});
-
-// ================= CONTROL =================
-function setFilter(f,e){
-  currentFilter=f;
-  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-  e.classList.add('active-filter');
-  render();
-}
-function showSection(s){
-  section-dashboard.classList.toggle('hidden',s!=='dashboard');
-  section-recap.classList.toggle('hidden',s!=='recap');
-}
-</script>
-</body>
-</html>
