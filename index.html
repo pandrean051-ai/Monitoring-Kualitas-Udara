@@ -164,13 +164,34 @@ function getAggregated(){
   const g={};
   logData.forEach(d=>{
     const t=new Date(d.t);
-    let k=t.toLocaleString();
-    if(currentFilter==='min')k=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
-    if(currentFilter==='hour')k=t.getHours()+':00';
-    if(currentFilter==='day')k=t.toLocaleDateString();
-    if(!g[k])g[k]={s:[],h:[],c:[],d:[]};
-    g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);
+    let k='';
+
+    if(currentFilter==='sec'){
+      k = t.toLocaleString('id-ID');
+    }
+
+    if(currentFilter==='min'){
+      k = t.toLocaleDateString('id-ID') + ' ' +
+          t.getHours().toString().padStart(2,'0') + ':' +
+          t.getMinutes().toString().padStart(2,'0');
+    }
+
+    if(currentFilter==='hour'){
+      k = t.toLocaleDateString('id-ID') + ' ' +
+          t.getHours().toString().padStart(2,'0') + ':00';
+    }
+
+    if(currentFilter==='day'){
+      k = t.toLocaleDateString('id-ID');
+    }
+
+    if(!g[k]) g[k]={s:[],h:[],c:[],d:[]};
+    g[k].s.push(d.s);
+    g[k].h.push(d.h);
+    g[k].c.push(d.c);
+    g[k].d.push(d.d);
   });
+
   return Object.keys(g).map(k=>({
     time:k,
     s:(avg(g[k].s)).toFixed(1),
