@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Monitoring Kualitas Udara</title>
 
+<!-- LIBRARY -->
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -16,26 +17,31 @@
 body{
   background:#0b0e14;
   font-family:Inter;
-  color:#d8d9da
+  color:#d8d9da;
 }
 
 .card{
   background:#181b1f;
   border:1px solid #26292e;
-  border-radius:6px
+  border-radius:6px;
 }
 
 .nav-active{
   border-bottom:3px solid #3274d9;
-  color:#3274d9
+  color:#3274d9;
 }
 
 .active-filter{
   background:#3274d9;
-  color:#fff
+  color:#fff;
 }
 
-/* ===== TABEL ANALITIK ===== */
+/* PENTING: HIDDEN BENAR-BENAR MATI */
+.hidden{
+  display:none !important;
+}
+
+/* TABEL */
 .table-wrap{
   max-height:320px;
   overflow-y:auto;
@@ -54,18 +60,16 @@ thead{
   z-index:10;
 }
 
-th{
-  font-size:11px;
-  font-weight:700;
-  color:#9ca3af;
-  text-transform:uppercase;
+th,td{
   padding:6px 8px;
+  font-size:11px;
+  border-bottom:1px solid #26292e;
 }
 
-td{
-  font-size:11px;
-  padding:6px 8px;
-  border-bottom:1px solid #26292e;
+th{
+  color:#9ca3af;
+  font-weight:700;
+  text-transform:uppercase;
 }
 
 tbody tr:nth-child(even){
@@ -76,8 +80,8 @@ tbody tr:hover{
   background:#1f2937;
 }
 
-td:not(:first-child),
-th:not(:first-child){
+th:not(:first-child),
+td:not(:first-child){
   text-align:center;
 }
 </style>
@@ -86,19 +90,24 @@ th:not(:first-child){
 <body class="p-4 lg:p-8">
 <div class="max-w-7xl mx-auto">
 
-<header class="flex justify-between items-center mb-6 card p-4">
+<!-- HEADER (WAJIB Z-INDEX) -->
+<header class="flex justify-between items-center mb-6 card p-4 relative z-50">
   <h1 class="text-xl font-black text-white">
     MONITORING KUALITAS UDARA
     <span class="text-xs text-blue-500">Kelompok 11</span>
   </h1>
   <nav class="flex gap-6">
-    <button onclick="showSection('dashboard')" class="nav-active text-xs font-bold">MONITOR</button>
-    <button onclick="showSection('recap')" class="text-xs font-bold text-slate-500">ANALITIK</button>
+    <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold">
+      MONITOR
+    </button>
+    <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold text-slate-400">
+      ANALITIK
+    </button>
   </nav>
 </header>
 
-<!-- DASHBOARD -->
-<div id="section-dashboard" class="space-y-4">
+<!-- ================= DASHBOARD ================= -->
+<section id="section-dashboard" class="space-y-4">
   <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
     <div class="card p-4"><p class="text-xs text-rose-400">Suhu</p><h3 id="dash-temp" class="text-2xl font-black">-- °C</h3></div>
     <div class="card p-4"><p class="text-xs text-cyan-400">Kelembapan</p><h3 id="dash-hum" class="text-2xl font-black">-- %</h3></div>
@@ -111,24 +120,24 @@ th:not(:first-child){
     <h2 id="status" class="text-2xl font-black text-slate-500">MENUNGGU DATA</h2>
     <p id="last-update" class="text-[10px] text-slate-600 italic mt-2"></p>
   </div>
-</div>
+</section>
 
-<!-- ANALITIK -->
-<div id="section-recap" class="hidden">
+<!-- ================= ANALITIK ================= -->
+<section id="section-recap" class="hidden">
 <div class="card p-6">
 
-<div class="flex flex-wrap gap-2 mb-4">
-  <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
-  <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
+<div class="flex gap-2 mb-4">
+  <button class="f-btn active-filter px-3 py-1 text-xs">Live</button>
+  <button class="f-btn px-3 py-1 text-xs">Menit</button>
+  <button class="f-btn px-3 py-1 text-xs">Jam</button>
+  <button class="f-btn px-3 py-1 text-xs">Hari</button>
 </div>
 
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-  <div class="card p-4 h-[260px]"><p class="text-xs text-rose-500">Suhu</p><canvas id="chartTemp"></canvas></div>
-  <div class="card p-4 h-[260px]"><p class="text-xs text-cyan-500">Kelembapan</p><canvas id="chartHum"></canvas></div>
-  <div class="card p-4 h-[260px]"><p class="text-xs text-emerald-500">CO₂</p><canvas id="chartCO2"></canvas></div>
-  <div class="card p-4 h-[260px]"><p class="text-xs text-amber-500">Debu</p><canvas id="chartDust"></canvas></div>
+  <div class="card p-4 h-[250px]"><p class="text-xs text-rose-500">Suhu</p><canvas id="chartTemp"></canvas></div>
+  <div class="card p-4 h-[250px]"><p class="text-xs text-cyan-500">Kelembapan</p><canvas id="chartHum"></canvas></div>
+  <div class="card p-4 h-[250px]"><p class="text-xs text-emerald-500">CO₂</p><canvas id="chartCO2"></canvas></div>
+  <div class="card p-4 h-[250px]"><p class="text-xs text-amber-500">Debu</p><canvas id="chartDust"></canvas></div>
 </div>
 
 <div class="table-wrap">
@@ -136,10 +145,10 @@ th:not(:first-child){
 <thead>
 <tr>
   <th>Waktu</th>
-  <th>Suhu (°C)</th>
-  <th>Hum (%)</th>
-  <th>CO₂ (ppm)</th>
-  <th>Debu (µg/m³)</th>
+  <th>Suhu</th>
+  <th>Hum</th>
+  <th>CO₂</th>
+  <th>Debu</th>
 </tr>
 </thead>
 <tbody id="table-body"></tbody>
@@ -147,7 +156,8 @@ th:not(:first-child){
 </div>
 
 </div>
-</div>
+</section>
+
 </div>
 
 <script>
@@ -158,22 +168,23 @@ firebase.initializeApp({
 });
 const db = firebase.database();
 
-let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-let currentFilter='sec';
+let logData=[];
 
-function buildChart(id,color){
+// CHART
+function makeChart(id,color){
   return new Chart(document.getElementById(id),{
     type:'line',
-    data:{labels:[],datasets:[{data:[],borderColor:color,fill:false,tension:.3}]},
+    data:{labels:[],datasets:[{data:[],borderColor:color,tension:.3}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}
   });
 }
 
-const chartTemp=buildChart('chartTemp','#f03e3e');
-const chartHum=buildChart('chartHum','#339af0');
-const chartCO2=buildChart('chartCO2','#51cf66');
-const chartDust=buildChart('chartDust','#fcc419');
+const chartTemp=makeChart('chartTemp','#f03e3e');
+const chartHum=makeChart('chartHum','#339af0');
+const chartCO2=makeChart('chartCO2','#51cf66');
+const chartDust=makeChart('chartDust','#fcc419');
 
+// DATA LISTENER
 db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
   const v=s.val(); if(!v)return;
 
@@ -181,47 +192,38 @@ db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
   dash-hum.textContent=v.kelembapan+' %';
   dash-co2.textContent=v.co2+' ppm';
   dash-dust.textContent=v.debu+' µg/m³';
-
-  status.textContent=(v.status||'NORMAL');
+  status.textContent=v.status||'NORMAL';
   last-update.textContent=new Date().toLocaleString('id-ID');
 
   logData.push({
-    t:Date.now(),
-    s:v.suhu,
-    h:v.kelembapan,
-    c:v.co2,
-    d:v.debu
+    t:new Date().toLocaleString('id-ID'),
+    s:v.suhu,h:v.kelembapan,c:v.co2,d:v.debu
   });
 
-  render();
-});
-
-function render(){
-  const view=logData.slice(-50);
-
-  chartTemp.data.labels=view.map(v=>new Date(v.t).toLocaleString());
-  chartTemp.data.datasets[0].data=view.map(v=>v.s);
+  chartTemp.data.labels=logData.map(d=>d.t);
+  chartTemp.data.datasets[0].data=logData.map(d=>d.s);
   chartTemp.update();
 
-  document.getElementById('table-body').innerHTML=view.reverse().map(v=>`
+  table-body.innerHTML=logData.slice().reverse().map(d=>`
     <tr>
-      <td>${new Date(v.t).toLocaleString('id-ID')}</td>
-      <td>${v.s}</td>
-      <td>${v.h}</td>
-      <td>${v.c}</td>
-      <td>${v.d}</td>
+      <td>${d.t}</td><td>${d.s}</td><td>${d.h}</td><td>${d.c}</td><td>${d.d}</td>
     </tr>`).join('');
-}
+});
 
-function setFilter(f,e){
-  currentFilter=f;
-  document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-  e.classList.add('active-filter');
-}
+// NAVIGATION (FIX TOTAL)
+function showSection(sec){
+  section-dashboard.classList.add('hidden');
+  section-recap.classList.add('hidden');
+  btn-dashboard.classList.remove('nav-active');
+  btn-recap.classList.remove('nav-active');
 
-function showSection(s){
-  section-dashboard.classList.toggle('hidden',s!=='dashboard');
-  section-recap.classList.toggle('hidden',s!=='recap');
+  if(sec==='dashboard'){
+    section-dashboard.classList.remove('hidden');
+    btn-dashboard.classList.add('nav-active');
+  }else{
+    section-recap.classList.remove('hidden');
+    btn-recap.classList.add('nav-active');
+  }
 }
 </script>
 
