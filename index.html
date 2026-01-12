@@ -205,10 +205,10 @@ function render(){
   document.getElementById('table-body').innerHTML=view.reverse().map(v=>`
     <tr>
       <td class="p-2">${v.time}</td>
-      <td class="p-2">${v.s}</td>
-      <td class="p-2">${v.h}</td>
-      <td class="p-2">${v.c}</td>
-      <td class="p-2">${v.d}</td>
+      <td class="p-2 text-left">${v.s}</td>
+      <td class="p-2 text-left">${v.h}</td>
+      <td class="p-2 text-left">${v.c}</td>
+      <td class="p-2"text-left>${v.d}</td>
     </tr>`).join('');
 }
 
