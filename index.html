@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring Kualitas Udara - Data Terbaru di Atas</title>
+  <title>Monitoring Kualitas Udara - Fixed Charts</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -12,89 +12,496 @@
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    body{background:#0b0e14;font-family:Inter;color:#d8d9da;min-height:100vh}
-    .card{background:#181b1f;border:1px solid #26292e;border-radius:12px;padding:1.75rem;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
-    .nav-active{border-bottom:3px solid #3b82f6;color:#3b82f6;font-weight:900}
-    .active-filter{background:linear-gradient(135deg,#3b82f6,#1d4ed8);color:#fff;box-shadow:0 4px 15px rgba(59,130,246,0.4)}
-    .status-baik { background: linear-gradient(135deg, #10b98144, #05966944); border-left: 5px solid #10b981; }
-    .status-sedang { background: linear-gradient(135deg, #f59e0a44, #d9770644); border-left: 5px solid #f59e0a; }
-    .status-buruk { background: linear-gradient(135deg, #ef444444, #dc262644); border-left: 5px solid #ef4444; }
-    .table-row:hover { background: #26292e !important; transform: scale(1.01); }
-    .chart-container { height: 280px; position: relative; margin-top: 1rem; }
-    .latest-badge { background: linear-gradient(135deg, #3b82f6, #1d4ed8); box-shadow: 0 4px 15px rgba(59,130,246,0.3); }
+    body{background:#0b0e14;font-family:Inter;color:#d8d9da}
+    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px;padding:1.5rem}
+    .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
+    .active-filter{background:#3274d9;color:#fff}
+    .status-baik { background: linear-gradient(135deg, #10b98133, #05966933); border-left: 4px solid #10b981; }
+    .status-sedang { background: linear-gradient(135deg, #f59e0a33, #d9770633); border-left: 4px solid #f59e0a; }
+    .status-buruk { background: linear-gradient(135deg, #ef444433, #dc262633); border-left: 4px solid #ef4444; }
+    .table-row:hover { background: #26292e !important; }
+    .chart-container { height: 260px; position: relative; }
   </style>
 </head>
 
-<body class="p-6 lg:p-12">
+<body class="p-4 lg:p-8">
 <div class="max-w-7xl mx-auto">
 
-  <!-- HEADER -->
-  <header class="flex justify-between items-center mb-8 card">
-    <div>
-      <h1 class="text-3xl font-black bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-        MONITORING KUALITAS UDARA
-      </h1>
-      <p class="text-sm text-emerald-400 font-bold mt-1 flex items-center gap-2">
-        ✅ Data <strong>TERBARU DI ATAS</strong> • Kelompok 11
-      </p>
-    </div>
-    <nav class="flex gap-4 p-2 bg-slate-900/50 rounded-xl">
-      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-sm font-bold px-6 py-3 rounded-xl hover:bg-slate-800/50 transition-all">📊 MONITOR</button>
-      <button id="btn-recap" onclick="showSection('recap')" class="text-sm font-bold px-6 py-3 rounded-xl hover:bg-slate-800/50 transition-all text-slate-400">📈 ANALITIK</button>
+  <header class="flex justify-between items-center mb-6 card">
+    <h1 class="text-xl font-black text-white">
+      MONITORING KUALITAS UDARA
+      <span class="text-xs text-emerald-500 ml-2">✅ Charts Fixed</span>
+    </h1>
+    <nav class="flex gap-6">
+      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold px-3 py-2 rounded hover:bg-slate-800 transition-all">📊 MONITOR</button>
+      <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold px-3 py-2 rounded hover:bg-slate-800 transition-all text-slate-400">📈 ANALITIK</button>
     </nav>
   </header>
 
   <!-- DASHBOARD -->
-  <div id="section-dashboard" class="">
+  <div id="section-dashboard" class="space-y-4">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card">
+        <p class="text-xs text-rose-400 font-medium mb-1">🌡️ Suhu</p>
+        <h3 id="dash-temp" class="text-3xl font-black text-rose-400">-- °C</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="temp-bar" class="bg-rose-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-xs text-cyan-400 font-medium mb-1">💧 Kelembapan</p>
+        <h3 id="dash-hum" class="text-3xl font-black text-cyan-400">-- %</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="hum-bar" class="bg-cyan-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-xs text-emerald-400 font-medium mb-1">☁️ CO₂</p>
+        <h3 id="dash-co2" class="text-3xl font-black text-emerald-400">-- ppm</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="co2-bar" class="bg-emerald-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-xs text-amber-400 font-medium mb-1">🌫️ Debu PM2.5</p>
+        <h3 id="dash-dust" class="text-3xl font-black text-amber-400">-- μg/m³</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="dust-bar" class="bg-amber-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div class="card">
+        <p class="text-sm font-bold text-slate-300 mb-4">🎯 Status Kualitas Udara</p>
+        <h2 id="status-main" class="text-4xl font-black mb-4 text-slate-500">MENUNGGU DATA</h2>
+        <p id="last-update" class="text-xs text-slate-500 italic mb-2">Tidak ada koneksi</p>
+        <div class="flex items-center gap-4 text-sm">
+          <span class="px-3 py-1 bg-slate-800 rounded-full text-xs">📶 <span id="connection">Offline</span></span>
+          <span class="px-3 py-1 bg-slate-800 rounded-full text-xs">💾 <span id="data-count">0</span> data</span>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-slate-300 mb-4">💡 Rekomendasi Tindakan</p>
+        <div id="status-desc" class="text-base leading-relaxed text-slate-300">
+          Menunggu data pertama dari sensor ESP32...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ANALITIK -->
+  <div id="section-recap" class="hidden space-y-6">
+    <div class="flex flex-wrap gap-3 items-center mb-6 p-4 bg-slate-900/50 rounded-xl">
+      <div class="flex gap-1">
+        <button class="f-btn active-filter px-4 py-2 text-sm rounded-lg" onclick="setFilter('sec',this)">🔴 Live</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('min',this)">⏱️ Menit</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('hour',this)">🕐 Jam</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('day',this)">📅 Hari</button>
+      </div>
+      
+      <select onchange="changeHistoryRange(this.value)" class="bg-slate-800 border border-slate-600 text-sm px-3 py-2 rounded-lg">
+        <option value="20">20 Data Terbaru</option>
+        <option value="50" selected>50 Data</option>
+        <option value="100">100 Data</option>
+        <option value="200">200 Data</option>
+      </select>
+
+      <div class="flex items-center gap-2 ml-auto text-sm">
+        <button onclick="prevPage()" class="p-2 rounded-lg hover:bg-slate-800" title="Sebelumnya">◀️</button>
+        <span id="page-info" class="px-4 py-2 bg-slate-800 rounded-lg min-w-[80px]">1 / 1</span>
+        <button onclick="nextPage()" class="p-2 rounded-lg hover:bg-slate-800" title="Selanjutnya">▶️</button>
+      </div>
+
+      <button onclick="exportData()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all ml-2">
+        📥 Export CSV
+      </button>
+      <button onclick="clearHistory()" class="bg-rose-600 hover:bg-rose-500 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all">
+        🗑️ Reset Data
+      </button>
+    </div>
+
+    <!-- CHARTS ✅ ULTRA FIXED -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card">
+        <p class="text-sm font-bold text-rose-400 mb-3">📈 Suhu (°C) - Real Time</p>
+        <div class="chart-container">
+          <canvas id="chartTemp"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-cyan-400 mb-3">💧 Kelembapan (%)</p>
+        <div class="chart-container">
+          <canvas id="chartHum"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-emerald-400 mb-3">☁️ CO₂ (ppm)</p>
+        <div class="chart-container">
+          <canvas id="chartCO2"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-amber-400 mb-3">🌫️ Debu PM2.5 (μg/m³)</p>
+        <div class="chart-container">
+          <canvas id="chartDust"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- TABEL & STATS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card">
+        <p class="text-sm font-bold mb-4">📋 Data Terbaru</p>
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+          <table class="w-full text-xs">
+            <thead class="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
+              <tr>
+                <th class="p-3 text-left font-bold text-slate-200 w-24">Waktu</th>
+                <th class="p-3 text-center font-bold text-slate-200">🌡️</th>
+                <th class="p-3 text-center font-bold text-slate-200">💧</th>
+                <th class="p-3 text-center font-bold text-slate-200">☁️</th>
+                <th class="p-3 text-center font-bold text-slate-200">🌫️</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
+      </div>
+      
+      <div class="card space-y-4">
+        <p class="text-sm font-bold text-slate-300">📊 Statistik</p>
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-emerald-400" id="total-data">0</div>
+            <div class="text-xs text-slate-500">Total Data</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-amber-400" id="avg-co2">--</div>
+            <div class="text-xs text-slate-500">Rata-rata CO₂</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-rose-400" id="max-temp">--</div>
+            <div class="text-xs text-slate-500">Suhu Max</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-yellow-400" id="max-dust">--</div>
+            <div class="text-xs text-slate-500">Debu Max</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // 🔥 FIREBASE v9 COMPAT MODE - STABLE
+  const firebaseConfig = {
+    apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+    authDomain: "monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "monitoring-kualitas-udar-8ad9d",
+    storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef123456"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // DATA STORAGE
+  let logData = JSON.parse(localStorage.getItem('iaq_logs') || '[]');
+  let charts = {};
+  let currentFilter = 'sec', historyLimit = 50, pageOffset = 0;
+
+  // 🔥 CHART INITIALIZATION - BULLETPROOF
+  function initCharts() {
+    const chartConfig = {
+      type: 'line',
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { 
+            ticks: { color: '#9ca3af', maxTicksLimit: 6 },
+            grid: { color: '#374151' }
+          },
+          y: { 
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#374151' },
+            beginAtZero: true
+          }
+        },
+        animation: { duration: 0 } // Fast updates
+      }
+    };
+
+    charts.temp = new Chart(document.getElementById('chartTemp'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#ef4444', backgroundColor: '#ef444422', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    charts.hum = new Chart(document.getElementById('chartHum'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#3b82f6', backgroundColor: '#3b82f622', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    charts.co2 = new Chart(document.getElementById('chartCO2'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#10b981', backgroundColor: '#10b98122', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    charts.dust = new Chart(document.getElementById('chartDust'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b22', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    console.log('✅ Charts initialized:', Object.keys(charts));
+  }
+
+  // MAIN RENDER ENGINE
+  function renderAnalytics() {
+    const aggregated = aggregateData();
+    const pageSize = historyLimit;
+    const startIdx = Math.max(0, aggregated.length - pageOffset - pageSize);
+    const viewData = aggregated.slice(startIdx, startIdx + pageSize);
+
+    // 🔥 UPDATE CHARTS - DIRECT DATA ASSIGNMENT
+    const labels = viewData.map((_, i) => `T-${i + 1}`);
     
-    <!-- METRICS CARDS -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-      <div class="card group hover:shadow-xl transition-all">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-12 h-12 bg-rose-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span class="text-2xl">🌡️</span>
-          </div>
-          <p class="text-xs font-bold text-rose-400 uppercase tracking-wide">Suhu</p>
-        </div>
-        <h3 id="dash-temp" class="text-4xl font-black text-rose-400 mb-2">-- °C</h3>
-        <div class="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
-          <div id="temp-bar" class="bg-gradient-to-r from-rose-400 to-rose-600 h-3 rounded-full transition-all duration-1000" style="width:0%"></div>
-        </div>
-      </div>
+    Object.entries(charts).forEach(([key, chart]) => {
+      const dataMap = { temp: 's', hum: 'h', co2: 'c', dust: 'd' };
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = viewData.map(row => parseFloat(row[dataMap[key]]) || 0);
+      chart.update('none'); // Fast no-animation update
+    });
 
-      <div class="card group hover:shadow-xl transition-all">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span class="text-2xl">💧</span>
-          </div>
-          <p class="text-xs font-bold text-cyan-400 uppercase tracking-wide">Kelembapan</p>
-        </div>
-        <h3 id="dash-hum" class="text-4xl font-black text-cyan-400 mb-2">-- %</h3>
-        <div class="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
-          <div id="hum-bar" class="bg-gradient-to-r from-cyan-400 to-cyan-600 h-3 rounded-full transition-all duration-1000" style="width:0%"></div>
-        </div>
-      </div>
+    renderTable(viewData);
+    updateStats(aggregated);
+    updatePagination(aggregated.length);
+  }
 
-      <div class="card group hover:shadow-xl transition-all">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span class="text-2xl">☁️</span>
-          </div>
-          <p class="text-xs font-bold text-emerald-400 uppercase tracking-wide">CO₂</p>
-        </div>
-        <h3 id="dash-co2" class="text-4xl font-black text-emerald-400 mb-2">-- ppm</h3>
-        <div class="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
-          <div id="co2-bar" class="bg-gradient-to-r from-emerald-400 to-emerald-600 h-3 rounded-full transition-all duration-1000" style="width:0%"></div>
-        </div>
-      </div>
+  function aggregateData() {
+    const groups = {};
+    logData.slice(-500).forEach(entry => {
+      const date = new Date(entry.t);
+      let key = currentFilter === 'sec' ? 
+        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit', second: '2-digit'}) :
+        currentFilter === 'min' ? 
+        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit'}) :
+        currentFilter === 'hour' ? 
+        date.getHours() + ':00' :
+        date.toLocaleDateString('id');
+      
+      if (!groups[key]) groups[key] = { s: [], h: [], c: [], d: [], count: 0 };
+      groups[key].s.push(entry.s);
+      groups[key].h.push(entry.h);
+      groups[key].c.push(entry.c);
+      groups[key].d.push(entry.d);
+      groups[key].count++;
+    });
 
-      <div class="card group hover:shadow-xl transition-all">
-        <div class="flex items-center gap-3 mb-3">
-          <div class="w-12 h-12 bg-amber-500/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-            <span class="text-2xl">🌫️</span>
-          </div>
-          <p class="text-xs font-bold text-amber-400 uppercase tracking-wide">PM2.5 Debu</p>
-        </div>
-        <h3 id="dash-dust" class="text-4xl font-black text-amber-400 mb-2">-- μg/m³</h3>
-        <div class="w-full bg-slate-800/50 rounded-full h-3 overflow-hidden">
-          <div id="dust-bar" class
+    return Object.entries(groups).map(([time, values]) => ({
+      time,
+      s: (values.s.reduce((a, b) => a + b, 0) / values.s.length).toFixed(1),
+      h: (values.h.reduce((a, b) => a + b, 0) / values.h.length).toFixed(1),
+      c: Math.round(values.c.reduce((a, b) => a + b, 0) / values.c.length),
+      d: (values.d.reduce((a, b) => a + b, 0) / values.d.length).toFixed(0)
+    })).reverse(); // Newest first
+  }
+
+  function renderTable(data) {
+    document.getElementById('table-body').innerHTML = data.map(row => `
+      <tr class="table-row hover:bg-slate-800/50 transition-all border-b border-slate-800/50">
+        <td class="p-3 font-mono text-sm">${row.time}</td>
+        <td class="p-3 text-center text-rose-400 font-mono">${row.s}°C</td>
+        <td class="p-3 text-center text-cyan-400 font-mono">${row.h}%</td>
+        <td class="p-3 text-center text-emerald-400 font-mono">${row.c}ppm</td>
+        <td class="p-3 text-center text-amber-400 font-mono">${row.d}μg</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">Tidak ada data</td></tr>';
+  }
+
+  function updateStats(data) {
+    document.getElementById('total-data').textContent = logData.length;
+    if (data.length) {
+      const flats = { s: [], h: [], c: [], d: [] };
+      data.forEach(row => {
+        flats.s.push(parseFloat(row.s));
+        flats.h.push(parseFloat(row.h));
+        flats.c.push(parseFloat(row.c));
+        flats.d.push(parseFloat(row.d));
+      });
+      
+      document.getElementById('avg-co2').textContent = Math.round(
+        flats.c.reduce((a, b) => a + b, 0) / flats.c.length
+      );
+      document.getElementById('max-temp').textContent = Math.max(...flats.s).toFixed(1);
+      document.getElementById('max-dust').textContent = Math.max(...flats.d);
+    }
+  }
+
+  function updatePagination(total) {
+    const pages = Math.ceil(total / historyLimit);
+    document.getElementById('page-info').textContent = `${Math.floor(pageOffset / historyLimit) + 1} / ${pages}`;
+  }
+
+  // 🔥 FIREBASE LISTENER - ROBUST
+  let isConnected = false;
+  db.ref('.info/connected').on('value', snap => {
+    isConnected = snap.val();
+    document.getElementById('connection').textContent = isConnected ? 'Online' : 'Offline';
+    document.getElementById('connection').parentElement.className = 
+      `px-3 py-1 bg-slate-800 rounded-full text-xs ${isConnected ? 'bg-emerald-600/80 text-emerald-200' : 'bg-rose-600/80 text-rose-200'}`;
+  });
+
+  db.ref('log_sensor').limitToLast(1).on('child_added', snapshot => {
+    const data = snapshot.val();
+    console.log('📡 New data:', data);
+    
+    if (data && typeof data.suhu === 'number') {
+      // Dashboard update
+      const temp = data.suhu.toFixed(1);
+      const hum = data.kelembapan?.toFixed(1) || '0';
+      const co2 = Math.round(data.co2 || 400);
+      const dust = Math.round(data.debu || 0);
+      
+      document.getElementById('dash-temp').textContent = temp + ' °C';
+      document.getElementById('temp-bar').style.width = Math.min((temp / 40) * 100, 100) + '%';
+      
+      document.getElementById('dash-hum').textContent = hum + ' %';
+      document.getElementById('hum-bar').style.width = Math.min((hum / 100) * 100, 100) + '%';
+      
+      document.getElementById('dash-co2').textContent = co2 + ' ppm';
+      document.getElementById('co2-bar').style.width = Math.min((co2 / 2000) * 100, 100) + '%';
+      
+      document.getElementById('dash-dust').textContent = dust + ' μg/m³';
+      document.getElementById('dust-bar').style.width = Math.min((dust / 500) * 100, 100) + '%';
+
+      // Status
+      const status = (data.status || 'BAIK').toUpperCase();
+      const statusEl = document.getElementById('status-main');
+      statusEl.textContent = status;
+      statusEl.className = `text-4xl font-black mb-4 ${
+        status === 'BAIK' ? 'text-emerald-400' : 
+        status === 'SEDANG' ? 'text-amber-400' : 'text-rose-400'
+      }`;
+      
+      document.getElementById('status-desc').innerHTML = getStatusDesc(status);
+      document.getElementById('last-update').textContent = 
+        `Diperbarui: ${new Date().toLocaleString('id-ID')}`;
+
+      // Log data
+      logData.push({
+        t: Date.now(),
+        s: data.suhu,
+        h: data.kelembapan || 0,
+        c: data.co2 || 400,
+        d: data.debu || 0,
+        status
+      });
+      
+      if (logData.length > 2000) logData = logData.slice(-2000);
+      localStorage.setItem('iaq_logs', JSON.stringify(logData));
+      
+      document.getElementById('data-count').textContent = logData.length;
+      
+      if (!document.getElementById('section-recap').classList.contains('hidden')) {
+        renderAnalytics();
+      }
+    }
+  });
+
+  function getStatusDesc(status) {
+    const desc = {
+      'BAIK': '✅ <strong>Kualitas udara BAIK</strong><br>✅ Aktivitas normal aman dilakukan tanpa batasan',
+      'SEDANG': '⚠️ <strong>Udara SEDANG</strong><br>👶 Anak-anak dan lansia batasi aktivitas luar ruangan',
+      'BURUK': '🚨 <strong>Udara BURUK</strong><br>❌ Batasi semua aktivitas luar ruang, gunakan masker N95',
+      'NORMAL': '✅ <strong>Normal</strong><br>Semua aktivitas aman dilakukan'
+    };
+    return desc[status] || '⏳ Menunggu data...';
+  }
+
+  // CONTROLS
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active-filter'));
+    btn.classList.add('active-filter');
+    pageOffset = 0;
+    renderAnalytics();
+  }
+
+  function changeHistoryRange(limit) {
+    historyLimit = +limit;
+    pageOffset = 0;
+    renderAnalytics();
+  }
+
+  function prevPage() { if (pageOffset > 0) { pageOffset -= historyLimit; renderAnalytics(); } }
+  function nextPage() { 
+    const data = aggregateData();
+    if (pageOffset + historyLimit < data.length) { pageOffset += historyLimit; renderAnalytics(); }
+  }
+
+  function exportData() {
+    const csv = ['Waktu,Suhu,Hum,CO2,Debu\n'].concat(
+      logData.slice(-100).map(d => 
+        `${new Date(d.t).toLocaleString()},${d.s},${d.h},${d.c},${d.d}`
+      )
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `iaq-data-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+  }
+
+  function clearHistory() {
+    if (confirm('Hapus semua data?')) {
+      logData = [];
+      localStorage.removeItem('iaq_logs');
+      renderAnalytics();
+    }
+  }
+
+  function showSection(section) {
+    document.querySelectorAll('[id^="section-"]').forEach(s => s.classList.add('hidden'));
+    document.getElementById(`section-${section}`).classList.remove('hidden');
+    
+    document.querySelectorAll('[id^="btn-"]').forEach(b => b.classList.remove('nav-active'));
+    document.getElementById(`btn-${section}`).classList.add('nav-active');
+    
+    if (section === 'recap') renderAnalytics();
+  }
+
+  // INIT
+  window.addEventListener('load', () => {
+    initCharts();
+    renderAnalytics();
+    console.log('🚀 Dashboard ready! Data count:', logData.length);
+  });
+
+  // Auto refresh analytics
+  setInterval(() => {
+    if (!document.getElementById('section-recap').classList.contains('hidden')) {
+      renderAnalytics();
+    }
+  }, 3000);
+</script>
+</body>
+</html>
