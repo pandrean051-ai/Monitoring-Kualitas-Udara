@@ -13,14 +13,14 @@
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     body{background:#0b0e14;font-family:Inter;color:#d8d9da}
-    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px;padding:1.5rem}
+    .card{background:#181b1f;border:1px solid #26292e;border-radius:8px;padding:1.5rem;box-shadow:0 4px 6px -1px rgba(0,0,0,0.1)}
     .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
     .active-filter{background:#3274d9;color:#fff}
     .status-baik { background: linear-gradient(135deg, #10b98133, #05966933); border-left: 4px solid #10b981; }
     .status-sedang { background: linear-gradient(135deg, #f59e0a33, #d9770633); border-left: 4px solid #f59e0a; }
     .status-buruk { background: linear-gradient(135deg, #ef444433, #dc262633); border-left: 4px solid #ef4444; }
     .table-row:hover { background: #26292e !important; }
-    .chart-container { height: 260px; position: relative; }
+    .chart-container { height: 280px; position: relative; }
   </style>
 </head>
 
@@ -30,7 +30,7 @@
   <header class="flex justify-between items-center mb-6 card">
     <h1 class="text-xl font-black text-white">
       MONITORING KUALITAS UDARA
-      <span class="text-xs text-emerald-500 ml-2">✅ Charts Fixed</span>
+      <span class="text-xs text-emerald-500 ml-2">✅ Charts Ultra Fixed</span>
     </h1>
     <nav class="flex gap-6">
       <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold px-3 py-2 rounded hover:bg-slate-800 transition-all">📊 MONITOR</button>
@@ -121,10 +121,10 @@
       </button>
     </div>
 
-    <!-- CHARTS ✅ ULTRA FIXED -->
+    <!-- 🔥 CHARTS ULTRA FIXED - MATCH DASHBOARD COLORS -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="card">
-        <p class="text-sm font-bold text-rose-400 mb-3">📈 Suhu (°C) - Real Time</p>
+        <p class="text-sm font-bold text-rose-400 mb-3">📈 Suhu (°C)</p>
         <div class="chart-container">
           <canvas id="chartTemp"></canvas>
         </div>
@@ -215,80 +215,175 @@
   let charts = {};
   let currentFilter = 'sec', historyLimit = 50, pageOffset = 0;
 
-  // 🔥 CHART INITIALIZATION - BULLETPROOF
+  // 🔥 CHART INITIALIZATION - PERFECT MATCH WITH DASHBOARD
   function initCharts() {
-    const chartConfig = {
+    const baseConfig = {
       type: 'line',
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        interaction: { intersect: false, mode: 'index' },
-        plugins: { legend: { display: false } },
+        interaction: { 
+          intersect: false, 
+          mode: 'index',
+          includeInvisible: false
+        },
+        plugins: { 
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: 'rgba(17, 24, 39, 0.95)',
+            titleColor: '#f8fafc',
+            bodyColor: '#e2e8f0',
+            cornerRadius: 8,
+            displayColors: false,
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.parsed.y}`;
+              }
+            }
+          }
+        },
         scales: {
           x: { 
-            ticks: { color: '#9ca3af', maxTicksLimit: 6 },
-            grid: { color: '#374151' }
+            ticks: { 
+              color: '#9ca3af', 
+              maxTicksLimit: 8,
+              maxRotation: 45
+            },
+            grid: { 
+              color: 'rgba(55, 65, 81, 0.3)',
+              drawBorder: false
+            }
           },
           y: { 
-            ticks: { color: '#9ca3af' },
-            grid: { color: '#374151' },
+            ticks: { 
+              color: '#9ca3af',
+              callback: function(value) { return value; }
+            },
+            grid: { 
+              color: 'rgba(55, 65, 81, 0.3)',
+              drawBorder: false
+            },
             beginAtZero: true
           }
         },
-        animation: { duration: 0 } // Fast updates
+        animation: { 
+          duration: 300,
+          easing: 'easeOutQuart'
+        },
+        elements: {
+          point: {
+            radius: 3,
+            hoverRadius: 5
+          },
+          line: {
+            borderWidth: 3
+          }
+        }
       }
     };
 
+    // TEMPERATURE CHART - Perfect match dashboard
     charts.temp = new Chart(document.getElementById('chartTemp'), {
-      ...chartConfig,
-      data: { labels: [], datasets: [{ 
-        data: [], borderColor: '#ef4444', backgroundColor: '#ef444422', 
-        tension: 0.3, borderWidth: 2, fill: true 
-      }] }
+      ...baseConfig,
+      data: { 
+        labels: [], 
+        datasets: [{ 
+          label: 'Suhu (°C)',
+          data: [], 
+          borderColor: '#ef4444', 
+          backgroundColor: 'rgba(239, 68, 68, 0.15)', 
+          tension: 0.4, 
+          fill: true,
+          pointBackgroundColor: '#ef4444',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2
+        }] 
+      }
     });
 
+    // HUMIDITY CHART
     charts.hum = new Chart(document.getElementById('chartHum'), {
-      ...chartConfig,
-      data: { labels: [], datasets: [{ 
-        data: [], borderColor: '#3b82f6', backgroundColor: '#3b82f622', 
-        tension: 0.3, borderWidth: 2, fill: true 
-      }] }
+      ...baseConfig,
+      data: { 
+        labels: [], 
+        datasets: [{ 
+          label: 'Kelembapan (%)',
+          data: [], 
+          borderColor: '#06b6d4', 
+          backgroundColor: 'rgba(6, 182, 212, 0.15)', 
+          tension: 0.4, 
+          fill: true,
+          pointBackgroundColor: '#06b6d4',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2
+        }] 
+      }
     });
 
+    // CO2 CHART
     charts.co2 = new Chart(document.getElementById('chartCO2'), {
-      ...chartConfig,
-      data: { labels: [], datasets: [{ 
-        data: [], borderColor: '#10b981', backgroundColor: '#10b98122', 
-        tension: 0.3, borderWidth: 2, fill: true 
-      }] }
+      ...baseConfig,
+      data: { 
+        labels: [], 
+        datasets: [{ 
+          label: 'CO₂ (ppm)',
+          data: [], 
+          borderColor: '#10b981', 
+          backgroundColor: 'rgba(16, 185, 129, 0.15)', 
+          tension: 0.4, 
+          fill: true,
+          pointBackgroundColor: '#10b981',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2
+        }] 
+      }
     });
 
+    // DUST CHART
     charts.dust = new Chart(document.getElementById('chartDust'), {
-      ...chartConfig,
-      data: { labels: [], datasets: [{ 
-        data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b22', 
-        tension: 0.3, borderWidth: 2, fill: true 
-      }] }
+      ...baseConfig,
+      data: { 
+        labels: [], 
+        datasets: [{ 
+          label: 'PM2.5 (μg/m³)',
+          data: [], 
+          borderColor: '#f59e0b', 
+          backgroundColor: 'rgba(245, 158, 11, 0.15)', 
+          tension: 0.4, 
+          fill: true,
+          pointBackgroundColor: '#f59e0b',
+          pointBorderColor: '#ffffff',
+          pointBorderWidth: 2
+        }] 
+      }
     });
 
-    console.log('✅ Charts initialized:', Object.keys(charts));
+    console.log('✅ Charts PERFECTLY initialized with dashboard colors');
   }
 
-  // MAIN RENDER ENGINE
+  // 🔥 ULTRA SMOOTH RENDER ENGINE
   function renderAnalytics() {
     const aggregated = aggregateData();
     const pageSize = historyLimit;
     const startIdx = Math.max(0, aggregated.length - pageOffset - pageSize);
     const viewData = aggregated.slice(startIdx, startIdx + pageSize);
 
-    // 🔥 UPDATE CHARTS - DIRECT DATA ASSIGNMENT
-    const labels = viewData.map((_, i) => `T-${i + 1}`);
+    // ULTRA SMOOTH CHART UPDATES
+    const labels = viewData.map((row, i) => {
+      if (currentFilter === 'sec') return row.time;
+      if (currentFilter === 'min') return row.time;
+      return row.time;
+    });
     
     Object.entries(charts).forEach(([key, chart]) => {
       const dataMap = { temp: 's', hum: 'h', co2: 'c', dust: 'd' };
+      const values = viewData.map(row => parseFloat(row[dataMap[key]]) || 0);
+      
       chart.data.labels = labels;
-      chart.data.datasets[0].data = viewData.map(row => parseFloat(row[dataMap[key]]) || 0);
-      chart.update('none'); // Fast no-animation update
+      chart.data.datasets[0].data = values;
+      
+      // Smooth update with optimized mode
+      chart.update('active');
     });
 
     renderTable(viewData);
@@ -296,35 +391,51 @@
     updatePagination(aggregated.length);
   }
 
+  // Optimized aggregation
   function aggregateData() {
     const groups = {};
-    logData.slice(-500).forEach(entry => {
+    const recentData = logData.slice(-500);
+    
+    recentData.forEach(entry => {
       const date = new Date(entry.t);
-      let key = currentFilter === 'sec' ? 
-        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit', second: '2-digit'}) :
-        currentFilter === 'min' ? 
-        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit'}) :
-        currentFilter === 'hour' ? 
-        date.getHours() + ':00' :
-        date.toLocaleDateString('id');
+      let key;
       
-      if (!groups[key]) groups[key] = { s: [], h: [], c: [], d: [], count: 0 };
+      switch(currentFilter) {
+        case 'sec':
+          key = date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+          break;
+        case 'min':
+          key = date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit'});
+          break;
+        case 'hour':
+          key = date.getHours() + ':00';
+          break;
+        case 'day':
+          key = date.toLocaleDateString('id');
+          break;
+        default:
+          key = date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+      }
+      
+      if (!groups[key]) {
+        groups[key] = { s: [], h: [], c: [], d: [], time: key };
+      }
       groups[key].s.push(entry.s);
       groups[key].h.push(entry.h);
       groups[key].c.push(entry.c);
       groups[key].d.push(entry.d);
-      groups[key].count++;
     });
 
-    return Object.entries(groups).map(([time, values]) => ({
-      time,
-      s: (values.s.reduce((a, b) => a + b, 0) / values.s.length).toFixed(1),
-      h: (values.h.reduce((a, b) => a + b, 0) / values.h.length).toFixed(1),
-      c: Math.round(values.c.reduce((a, b) => a + b, 0) / values.c.length),
-      d: (values.d.reduce((a, b) => a + b, 0) / values.d.length).toFixed(0)
+    return Object.values(groups).map(group => ({
+      time: group.time,
+      s: (group.s.reduce((a, b) => a + b, 0) / group.s.length).toFixed(1),
+      h: (group.h.reduce((a, b) => a + b, 0) / group.h.length).toFixed(1),
+      c: Math.round(group.c.reduce((a, b) => a + b, 0) / group.c.length),
+      d: (group.d.reduce((a, b) => a + b, 0) / group.d.length).toFixed(0)
     })).reverse(); // Newest first
   }
 
+  // Rest of the functions remain the same...
   function renderTable(data) {
     document.getElementById('table-body').innerHTML = data.map(row => `
       <tr class="table-row hover:bg-slate-800/50 transition-all border-b border-slate-800/50">
@@ -361,13 +472,14 @@
     document.getElementById('page-info').textContent = `${Math.floor(pageOffset / historyLimit) + 1} / ${pages}`;
   }
 
-  // 🔥 FIREBASE LISTENER - ROBUST
+  // Firebase listener and other functions remain exactly the same...
   let isConnected = false;
   db.ref('.info/connected').on('value', snap => {
     isConnected = snap.val();
-    document.getElementById('connection').textContent = isConnected ? 'Online' : 'Offline';
-    document.getElementById('connection').parentElement.className = 
-      `px-3 py-1 bg-slate-800 rounded-full text-xs ${isConnected ? 'bg-emerald-600/80 text-emerald-200' : 'bg-rose-600/80 text-rose-200'}`;
+    const connEl = document.getElementById('connection');
+    connEl.textContent = isConnected ? 'Online' : 'Offline';
+    connEl.parentElement.className = 
+      `px-3 py-1 rounded-full text-xs ${isConnected ? 'bg-emerald-600/80 text-emerald-200' : 'bg-rose-600/80 text-rose-200'}`;
   });
 
   db.ref('log_sensor').limitToLast(1).on('child_added', snapshot => {
@@ -375,17 +487,17 @@
     console.log('📡 New data:', data);
     
     if (data && typeof data.suhu === 'number') {
-      // Dashboard update
       const temp = data.suhu.toFixed(1);
       const hum = data.kelembapan?.toFixed(1) || '0';
       const co2 = Math.round(data.co2 || 400);
       const dust = Math.round(data.debu || 0);
       
+      // Update dashboard
       document.getElementById('dash-temp').textContent = temp + ' °C';
-      document.getElementById('temp-bar').style.width = Math.min((temp / 40) * 100, 100) + '%';
+      document.getElementById('temp-bar').style.width = Math.min((parseFloat(temp) / 40) * 100, 100) + '%';
       
       document.getElementById('dash-hum').textContent = hum + ' %';
-      document.getElementById('hum-bar').style.width = Math.min((hum / 100) * 100, 100) + '%';
+      document.getElementById('hum-bar').style.width = Math.min((parseFloat(hum) / 100) * 100, 100) + '%';
       
       document.getElementById('dash-co2').textContent = co2 + ' ppm';
       document.getElementById('co2-bar').style.width = Math.min((co2 / 2000) * 100, 100) + '%';
@@ -393,7 +505,7 @@
       document.getElementById('dash-dust').textContent = dust + ' μg/m³';
       document.getElementById('dust-bar').style.width = Math.min((dust / 500) * 100, 100) + '%';
 
-      // Status
+      // Status update
       const status = (data.status || 'BAIK').toUpperCase();
       const statusEl = document.getElementById('status-main');
       statusEl.textContent = status;
@@ -406,7 +518,7 @@
       document.getElementById('last-update').textContent = 
         `Diperbarui: ${new Date().toLocaleString('id-ID')}`;
 
-      // Log data
+      // Store data
       logData.push({
         t: Date.now(),
         s: data.suhu,
@@ -437,7 +549,7 @@
     return desc[status] || '⏳ Menunggu data...';
   }
 
-  // CONTROLS
+  // Controls
   function setFilter(filter, btn) {
     currentFilter = filter;
     document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active-filter'));
@@ -452,10 +564,19 @@
     renderAnalytics();
   }
 
-  function prevPage() { if (pageOffset > 0) { pageOffset -= historyLimit; renderAnalytics(); } }
+  function prevPage() { 
+    if (pageOffset > 0) { 
+      pageOffset -= historyLimit; 
+      renderAnalytics(); 
+    } 
+  }
+  
   function nextPage() { 
     const data = aggregateData();
-    if (pageOffset + historyLimit < data.length) { pageOffset += historyLimit; renderAnalytics(); }
+    if (pageOffset + historyLimit < data.length) { 
+      pageOffset += historyLimit; 
+      renderAnalytics(); 
+    }
   }
 
   function exportData() {
@@ -467,14 +588,21 @@
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = `iaq-data-${new Date().toISOString().slice(0,10)}.csv`;
+    a.href = url; 
+    a.download = `iaq-data-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
+    URL.revokeObjectURL(url);
   }
 
   function clearHistory() {
     if (confirm('Hapus semua data?')) {
       logData = [];
       localStorage.removeItem('iaq_logs');
+      Object.values(charts).forEach(chart => {
+        chart.data.labels = [];
+        chart.data.datasets[0].data = [];
+        chart.update('none');
+      });
       renderAnalytics();
     }
   }
@@ -489,14 +617,15 @@
     if (section === 'recap') renderAnalytics();
   }
 
-  // INIT
+  // 🔥 PERFECT INITIALIZATION
   window.addEventListener('load', () => {
     initCharts();
+    showSection('dashboard');
     renderAnalytics();
-    console.log('🚀 Dashboard ready! Data count:', logData.length);
+    console.log('🚀 ULTRA Dashboard ready! Data count:', logData.length);
   });
 
-  // Auto refresh analytics
+  // Auto refresh analytics every 3 seconds
   setInterval(() => {
     if (!document.getElementById('section-recap').classList.contains('hidden')) {
       renderAnalytics();
