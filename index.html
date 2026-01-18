@@ -1,127 +1,309 @@
-#include <WiFi.h>
-#include <FirebaseESP32.h>
-#include <DHT.h>
-#include "time.h"
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoring Kualitas Udara</title>
 
-/* ================== WIFI ================== */
-#define WIFI_SSID     "ESP32_TEST"
-#define WIFI_PASSWORD "12345678"
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-/* ================= FIREBASE ================= */
-#define FIREBASE_HOST "monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
-#define FIREBASE_AUTH "ISI_DENGAN_DATABASE_SECRET"
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+    body{background:#0b0e14;font-family:Inter;color:#d8d9da}
+    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px}
+    .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
+    .active-filter{background:#3274d9;color:#fff}
+  </style>
+</head>
 
-/* ================= PIN CONFIG ================= */
-#define DHTPIN 27
-#define DHTTYPE DHT22
+<body class="p-4 lg:p-8">
+<div class="max-w-7xl mx-auto">
 
-#define MQ135_PIN 34
-#define DUST_LED  25
-#define DUST_PIN  35
+  <header class="flex justify-between items-center mb-6 card p-4">
+    <h1 class="text-xl font-black text-white">
+      MONITORING KUALITAS UDARA
+      <span class="text-xs text-blue-500">Kelompok 11</span>
+    </h1>
+    <nav class="flex gap-6">
+      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold">MONITOR</button>
+      <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold text-slate-500">ANALITIK</button>
+    </nav>
+  </header>
 
-#define BUZZER_PIN 26
+  <!-- ================= DASHBOARD ================= -->
+  <div id="section-dashboard" class="space-y-4">
+    <!-- 4 CARD METRIK -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="card p-4">
+        <p class="text-xs text-rose-400">Suhu</p>
+        <h3 id="dash-temp" class="text-2xl font-black">-- °C</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-cyan-400">Kelembapan</p>
+        <h3 id="dash-hum" class="text-2xl font-black">-- %</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-emerald-400">CO₂</p>
+        <h3 id="dash-co2" class="text-2xl font-black">-- ppm</h3>
+      </div>
+      <div class="card p-4">
+        <p class="text-xs text-amber-400">Debu</p>
+        <h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3>
+      </div>
+    </div>
 
-/* ================= OBJECT ================= */
-FirebaseData fbdo;
-FirebaseConfig config;
-FirebaseAuth auth;
-DHT dht(DHTPIN, DHTTYPE);
+    <!-- LAYOUT 2 KOLOM: STATUS + DESKRIPSI -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      
+      <!-- KIRI: STATUS UTAMA -->
+      <div class="card p-6">
+        <p class="text-xs text-slate-400 font-bold mb-2">Kondisi Udara</p>
+        <h2 id="status" class="text-3xl lg:text-4xl font-black text-slate-500 mb-4">MENUNGGU DATA</h2>
+        <p id="last-update" class="text-[10px] text-slate-600 italic"></p>
+      </div>
 
-/* ================= VAR ================= */
-unsigned long lastSend = 0;
+      <!-- KANAN: DESKRIPSI KONDITSI -->
+      <div class="card p-6 lg:p-8">
+        <p class="text-xs text-slate-400 font-bold mb-3">Rekomendasi Tindakan</p>
+        <div id="status-desc" class="text-sm text-slate-300 leading-relaxed">
+          Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi yang tepat.
+        </div>
+      </div>
 
-/* ================= FUNCTION ================= */
-float readDust() {
-  digitalWrite(DUST_LED, LOW);
-  delayMicroseconds(280);
-  int adc = analogRead(DUST_PIN);
-  delayMicroseconds(40);
-  digitalWrite(DUST_LED, HIGH);
+    </div>
+  </div>
 
-  float voltage = adc * (3.3 / 4095.0);
-  float dust = max(0.0, (voltage - 0.9) * 1000.0);
-  return dust;
-}
+  <!-- ================= ANALITIK ================= -->
+  <div id="section-recap" class="hidden">
+    <div class="card p-6">
 
-float readCO2() {
-  int adc = analogRead(MQ135_PIN);
-  float voltage = adc * (3.3 / 4095.0);
-  return voltage * 1000 + 400; // estimasi
-}
+      <div class="flex flex-wrap gap-2 items-center mb-4">
+        <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
+        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
 
-String airStatus(float co2, float dust) {
-  if (co2 > 1200 || dust > 150) return "BURUK";
-  if (co2 > 800 || dust > 75) return "SEDANG";
-  return "BAIK";
-}
+        <select onchange="changeHistoryRange(this.value)"
+                class="ml-4 bg-[#111217] border border-[#26292e] text-xs px-2 py-1 rounded">
+          <option value="50">50 Data</option>
+          <option value="100">100 Data</option>
+          <option value="150">150 Data</option>
+          <option value="200">200 Data</option>
+        </select>
 
-/* ================= SETUP ================= */
-void setup() {
-  Serial.begin(115200);
+        <button onclick="prevPage()" class="px-3 py-1 text-xs border">◀</button>
+        <button onclick="nextPage()" class="px-3 py-1 text-xs border">▶</button>
 
-  pinMode(DUST_LED, OUTPUT);
-  pinMode(BUZZER_PIN, OUTPUT);
-  digitalWrite(DUST_LED, HIGH);
-  digitalWrite(BUZZER_PIN, LOW);
+        <button onclick="clearHistory()" class="ml-auto bg-rose-600 px-3 py-1 text-xs text-white rounded">
+          Reset Histori
+        </button>
+      </div>
 
-  dht.begin();
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <div class="card p-4 h-[260px]">
+          <p class="text-xs text-rose-500">Suhu</p>
+          <canvas id="chartTemp"></canvas>
+        </div>
+        <div class="card p-4 h-[260px]">
+          <p class="text-xs text-cyan-500">Kelembapan</p>
+          <canvas id="chartHum"></canvas>
+        </div>
+        <div class="card p-4 h-[260px]">
+          <p class="text-xs text-emerald-500">CO₂</p>
+          <canvas id="chartCO2"></canvas>
+        </div>
+        <div class="card p-4 h-[260px]">
+          <p class="text-xs text-amber-500">Debu</p>
+          <canvas id="chartDust"></canvas>
+        </div>
+      </div>
 
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500); Serial.print(".");
+      <table class="w-full text-xs border border-[#26292e]">
+        <thead class="bg-[#111217]">
+        <tr>
+          <th class="p-2 text-left">Waktu</th>
+          <th class="p-2">Suhu</th>
+          <th class="p-2">Hum</th>
+          <th class="p-2">CO₂</th>
+          <th class="p-2">Debu</th>
+        </tr>
+        </thead>
+        <tbody id="table-body"></tbody>
+      </table>
+
+    </div>
+  </div>
+</div>
+
+<script>
+  // ================= FIREBASE =================
+  firebase.initializeApp({
+    apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
+  });
+  const db = firebase.database();
+
+  // ================= DATA =================
+  let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
+  let currentFilter='sec', historyLimit=50, pageOffset=0;
+
+  // ================= CHART BUILDER =================
+  function buildChart(id,color,yLabel){
+    return new Chart(document.getElementById(id),{
+      type:'line',
+      data:{
+        labels:[],
+        datasets:[{
+          data:[],
+          borderColor:color,
+          backgroundColor:color+'33',
+          fill:true,
+          tension:0.3
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{
+            ticks:{color:'#888',font:{size:10}},
+            title:{
+              display:true,
+              text:'Waktu Pengukuran',
+              color:'#aaa',
+              font:{size:11,weight:'bold'}
+            }
+          },
+          y:{
+            ticks:{color:'#888'},
+            beginAtZero:true,
+            title:{
+              display:true,
+              text:yLabel,
+              color:'#aaa',
+              font:{size:11,weight:'bold'}
+            }
+          }
+        }
+      }
+    });
   }
-  Serial.println("\nWiFi Connected");
 
-  config.host = FIREBASE_HOST;
-  config.signer.tokens.legacy_token = FIREBASE_AUTH;
-  Firebase.begin(&config, &auth);
-  Firebase.reconnectWiFi(true);
+  const chartTemp = buildChart('chartTemp','#f03e3e','Suhu (°C)');
+  const chartHum  = buildChart('chartHum','#339af0','Kelembapan (%)');
+  const chartCO2  = buildChart('chartCO2','#51cf66','CO₂ (ppm)');
+  const chartDust = buildChart('chartDust','#fcc419','Debu (µg/m³)');
 
-  configTime(7 * 3600, 0, "pool.ntp.org");
-}
-
-/* ================= LOOP ================= */
-void loop() {
-  if (millis() - lastSend >= 3000) {
-    lastSend = millis();
-
-    float suhu = dht.readTemperature();
-    float hum  = dht.readHumidity();
-    float co2  = readCO2();
-    float dust = readDust();
-
-    if (isnan(suhu) || isnan(hum)) {
-      Serial.println("DHT Error");
-      return;
-    }
-
-    String status = airStatus(co2, dust);
-    if (status == "BURUK") {
-      digitalWrite(BUZZER_PIN, HIGH);
-    } else {
-      digitalWrite(BUZZER_PIN, LOW);
-    }
-
-    time_t now;
-    time(&now);
-
-    FirebaseJson json;
-    json.set("suhu", suhu);
-    json.set("kelembapan", hum);
-    json.set("co2", co2);
-    json.set("debu", dust);
-    json.set("status", status);
-    json.set("timestamp", now);
-
-    // ================= LIVE =================
-    Firebase.setJSON(fbdo, "/latest_sensor", json);
-
-    // ================= HISTORI =================
-    Firebase.pushJSON(fbdo, "/log_sensor", json);
-
-    Serial.println("Data sent:");
-    Serial.printf("T:%.1f H:%.1f CO2:%.0f Dust:%.0f Status:%s\n",
-                  suhu, hum, co2, dust, status.c_str());
+  // ================= AGGREGATE =================
+  function getAggregated(){
+    const g={};
+    logData.forEach(d=>{
+      const t=new Date(d.t);
+      let k=t.toLocaleString();
+      if(currentFilter==='min')k=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
+      if(currentFilter==='hour')k=t.getHours()+':00';
+      if(currentFilter==='day')k=t.toLocaleDateString();
+      if(!g[k])g[k]={s:[],h:[],c:[],d:[]};
+      g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);
+    });
+    return Object.keys(g).map(k=>({
+      time:k,
+      s:(avg(g[k].s)).toFixed(1),
+      h:(avg(g[k].h)).toFixed(1),
+      c:Math.round(avg(g[k].c)),
+      d:(avg(g[k].d)).toFixed(1)
+    }));
   }
-}
+  const avg=a=>a.reduce((x,y)=>x+y)/a.length;
+
+  // ================= DESKRIPSI KONDISI =================
+  function getStatusDescription(status, v){
+    status = (status || '').toUpperCase();
+    if(status === 'BURUK'){
+      return '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95 jika keluar, dan aktifkan purifier udara.';
+    }
+    if(status === 'TIDAK SEHAT' || status === 'UNHEALTHY'){
+      return '⚠️ Udara TIDAK SEHAT bagi kelompok sensitif (anak, lansia, asma). Kurangi aktivitas berat luar ruang dan gunakan pelindung pernapasan.';
+    }
+    if(status === 'SEDANG' || status === 'MODERATE'){
+      return '✅ Kualitas udara SEDANG. Aktivitas luar ruang diperbolehkan, tapi kelompok sensitif kurangi paparan lama.';
+    }
+    if(status === 'BAIK' || status === 'GOOD' || status === 'NORMAL'){
+      return '✅ Kualitas udara BAIK. Semua aktivitas dalam/luar ruangan aman dilakukan secara normal.';
+    }
+    return '⏳ Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi tepat.';
+  }
+
+  // ================= RENDER =================
+  function render(){
+    const data=getAggregated();
+    const start=Math.max(0,data.length-historyLimit-pageOffset);
+    const view=data.slice(start,data.length-pageOffset);
+
+    chartTemp.data.labels=view.map(v=>v.time);
+    chartHum.data.labels=view.map(v=>v.time);
+    chartCO2.data.labels=view.map(v=>v.time);
+    chartDust.data.labels=view.map(v=>v.time);
+
+    chartTemp.data.datasets[0].data=view.map(v=>v.s);
+    chartHum.data.datasets[0].data=view.map(v=>v.h);
+    chartCO2.data.datasets[0].data=view.map(v=>v.c);
+    chartDust.data.datasets[0].data=view.map(v=>v.d);
+
+    chartTemp.update();
+    chartHum.update();
+    chartCO2.update();
+    chartDust.update();
+
+    document.getElementById('table-body').innerHTML=view.reverse().map(v=>`
+      <tr>
+        <td class="p-2">${v.time}</td>
+        <td class="p-2">${v.s}</td>
+        <td class="p-2">${v.h}</td>
+        <td class="p-2">${v.c}</td>
+        <td class="p-2">${v.d}</td>
+      </tr>`).join('');
+  }
+
+  // ================= FIREBASE LISTENER =================
+  db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
+    const v=s.val(); if(!v)return;
+
+    document.getElementById('dash-temp').textContent=v.suhu+' °C';
+    document.getElementById('dash-hum').textContent=v.kelembapan+' %';
+    document.getElementById('dash-co2').textContent=v.co2+' ppm';
+    document.getElementById('dash-dust').textContent=v.debu+' µg/m³';
+
+    const statusText=(v.status||'NORMAL').toUpperCase();
+    document.getElementById('status').textContent=statusText;
+    document.getElementById('last-update').textContent=new Date().toLocaleString();
+    document.getElementById('status-desc').textContent=getStatusDescription(statusText,v);
+
+    logData.push({t:Date.now(),s:+v.suhu,h:+v.kelembapan,c:+v.co2,d:+v.debu});
+    if(logData.length>5000)logData.shift();
+    localStorage.setItem('iaq_logs',JSON.stringify(logData));
+    render();
+  });
+
+  // ================= CONTROL =================
+  function setFilter(f,e){
+    currentFilter=f;
+    document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
+    e.classList.add('active-filter');
+    render();
+  }
+  function changeHistoryRange(v){historyLimit=+v;pageOffset=0;render()}
+  function prevPage(){pageOffset+=historyLimit;render()}
+  function nextPage(){pageOffset=Math.max(0,pageOffset-historyLimit);render()}
+  function clearHistory(){if(confirm('Hapus histori?')){logData=[];localStorage.clear();render()}}
+  function showSection(s){
+    document.getElementById('section-dashboard').classList.toggle('hidden',s!=='dashboard');
+    document.getElementById('section-recap').classList.toggle('hidden',s!=='recap');
+  }
+</script>
+</body>
+</html>
