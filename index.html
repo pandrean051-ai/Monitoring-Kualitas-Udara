@@ -16,6 +16,10 @@
     .card{background:#181b1f;border:1px solid #26292e;border-radius:4px}
     .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
     .active-filter{background:#3274d9;color:#fff}
+    .status-baik { background: linear-gradient(135deg, #10b98133, #05966933); border-left: 4px solid #10b981; }
+    .status-sedang { background: linear-gradient(135deg, #f59e0a33, #d9770633); border-left: 4px solid #f59e0a; }
+    .status-buruk { background: linear-gradient(135deg, #ef444433, #dc262633); border-left: 4px solid #ef4444; }
+    .table-row:hover { background: #26292e !important; }
   </style>
 </head>
 
@@ -57,7 +61,6 @@
 
     <!-- LAYOUT 2 KOLOM: STATUS + DESKRIPSI -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      
       <!-- KIRI: STATUS UTAMA -->
       <div class="card p-6">
         <p class="text-xs text-slate-400 font-bold mb-2">Kondisi Udara</p>
@@ -72,7 +75,6 @@
           Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi yang tepat.
         </div>
       </div>
-
     </div>
   </div>
 
@@ -80,7 +82,8 @@
   <div id="section-recap" class="hidden">
     <div class="card p-6">
 
-      <div class="flex flex-wrap gap-2 items-center mb-4">
+      <!-- FILTER & PAGINATION -->
+      <div class="flex flex-wrap gap-2 items-center mb-6">
         <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
         <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
         <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
@@ -94,45 +97,62 @@
           <option value="200">200 Data</option>
         </select>
 
-        <button onclick="prevPage()" class="px-3 py-1 text-xs border">◀</button>
-        <button onclick="nextPage()" class="px-3 py-1 text-xs border">▶</button>
+        <div class="flex items-center gap-1 ml-auto text-xs text-slate-500">
+          <button onclick="prevPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Sebelumnya">◀</button>
+          <span id="page-info" class="px-2">1 / 1</span>
+          <button onclick="nextPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Selanjutnya">▶</button>
+        </div>
 
-        <button onclick="clearHistory()" class="ml-auto bg-rose-600 px-3 py-1 text-xs text-white rounded">
-          Reset Histori
+        <button onclick="clearHistory()" class="ml-2 bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs text-white rounded transition-all">
+          🗑️ Reset Histori
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <!-- CHARTS -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div class="card p-4 h-[260px]">
-          <p class="text-xs text-rose-500">Suhu</p>
+          <p class="text-xs text-rose-500 mb-2">Suhu</p>
           <canvas id="chartTemp"></canvas>
         </div>
         <div class="card p-4 h-[260px]">
-          <p class="text-xs text-cyan-500">Kelembapan</p>
+          <p class="text-xs text-cyan-500 mb-2">Kelembapan</p>
           <canvas id="chartHum"></canvas>
         </div>
         <div class="card p-4 h-[260px]">
-          <p class="text-xs text-emerald-500">CO₂</p>
+          <p class="text-xs text-emerald-500 mb-2">CO₂</p>
           <canvas id="chartCO2"></canvas>
         </div>
         <div class="card p-4 h-[260px]">
-          <p class="text-xs text-amber-500">Debu</p>
+          <p class="text-xs text-amber-500 mb-2">Debu</p>
           <canvas id="chartDust"></canvas>
         </div>
       </div>
 
-      <table class="w-full text-xs border border-[#26292e]">
-        <thead class="bg-[#111217]">
-        <tr>
-          <th class="p-2 text-left">Waktu</th>
-          <th class="p-2">Suhu</th>
-          <th class="p-2">Hum</th>
-          <th class="p-2">CO₂</th>
-          <th class="p-2">Debu</th>
-        </tr>
-        </thead>
-        <tbody id="table-body"></tbody>
-      </table>
+      <!-- TABEL DATA DIPERBAIKI -->
+      <div class="overflow-x-auto">
+        <table class="w-full text-xs border border-[#26292e] rounded-lg overflow-hidden">
+          <thead class="bg-[#111217] sticky top-0 z-10">
+            <tr>
+              <th class="p-3 text-left font-bold text-slate-200 border-r border-[#26292e]">⏰ Waktu</th>
+              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">🌡️ Suhu</th>
+              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">💧 Hum</th>
+              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">☁️ CO₂</th>
+              <th class="p-3 text-center font-bold text-slate-200">🌫️ Debu</th>
+            </tr>
+          </thead>
+          <tbody id="table-body" class="divide-y divide-[#26292e]">
+            <!-- Data akan diisi JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- INFO STATS -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-xs text-center p-4 bg-[#111217] rounded-lg">
+        <div><span class="font-bold text-emerald-400" id="total-data">--</span><br><span class="text-slate-500">Total Data</span></div>
+        <div><span class="font-bold text-amber-400" id="avg-co2">--</span><br><span class="text-slate-500">Rata² CO₂</span></div>
+        <div><span class="font-bold text-rose-400" id="max-temp">--</span><br><span class="text-slate-500">Suhu Tertinggi</span></div>
+        <div><span class="font-bold text-yellow-400" id="max-dust">--</span><br><span class="text-slate-500">Debu Tertinggi</span></div>
+      </div>
 
     </div>
   </div>
@@ -149,45 +169,18 @@
   // ================= DATA =================
   let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
   let currentFilter='sec', historyLimit=50, pageOffset=0;
+  let totalPages = 1;
 
   // ================= CHART BUILDER =================
   function buildChart(id,color,yLabel){
     return new Chart(document.getElementById(id),{
       type:'line',
-      data:{
-        labels:[],
-        datasets:[{
-          data:[],
-          borderColor:color,
-          backgroundColor:color+'33',
-          fill:true,
-          tension:0.3
-        }]
-      },
+      data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:0.3}]},
       options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
+        responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{
-          x:{
-            ticks:{color:'#888',font:{size:10}},
-            title:{
-              display:true,
-              text:'Waktu Pengukuran',
-              color:'#aaa',
-              font:{size:11,weight:'bold'}
-            }
-          },
-          y:{
-            ticks:{color:'#888'},
-            beginAtZero:true,
-            title:{
-              display:true,
-              text:yLabel,
-              color:'#aaa',
-              font:{size:11,weight:'bold'}
-            }
-          }
+          x:{ticks:{color:'#888',font:{size:10}},title:{display:true,text:'Waktu',color:'#aaa',font:{size:11,weight:'bold'}}},
+          y:{ticks:{color:'#888'},beginAtZero:true,title:{display:true,text:yLabel,color:'#aaa',font:{size:11,weight:'bold'}}}
         }
       }
     });
@@ -198,112 +191,194 @@
   const chartCO2  = buildChart('chartCO2','#51cf66','CO₂ (ppm)');
   const chartDust = buildChart('chartDust','#fcc419','Debu (µg/m³)');
 
-  // ================= AGGREGATE =================
+  // ================= HELPERS =================
+  const avg = a => a.reduce((x,y)=>x+y)/a.length;
+
   function getAggregated(){
     const g={};
-    logData.forEach(d=>{
+    logData.slice(-1000).forEach(d=>{  // Limit processing
       const t=new Date(d.t);
-      let k=t.toLocaleString();
-      if(currentFilter==='min')k=t.getHours()+':'+String(t.getMinutes()).padStart(2,'0');
-      if(currentFilter==='hour')k=t.getHours()+':00';
-      if(currentFilter==='day')k=t.toLocaleDateString();
-      if(!g[k])g[k]={s:[],h:[],c:[],d:[]};
-      g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);
+      let k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
+      if(currentFilter==='min')k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
+      if(currentFilter==='hour')k=t.toLocaleString('id-ID',{hour:'2-digit'});
+      if(currentFilter==='day')k=t.toLocaleDateString('id-ID');
+      if(!g[k])g[k]={s:[],h:[],c:[],d:[],count:0};
+      g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);g[k].count++;
     });
-    return Object.keys(g).map(k=>({
+    return Object.entries(g).map(([k,v])=>({
       time:k,
-      s:(avg(g[k].s)).toFixed(1),
-      h:(avg(g[k].h)).toFixed(1),
-      c:Math.round(avg(g[k].c)),
-      d:(avg(g[k].d)).toFixed(1)
-    }));
-  }
-  const avg=a=>a.reduce((x,y)=>x+y)/a.length;
-
-  // ================= DESKRIPSI KONDISI =================
-  function getStatusDescription(status, v){
-    status = (status || '').toUpperCase();
-    if(status === 'BURUK'){
-      return '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95 jika keluar, dan aktifkan purifier udara.';
-    }
-    if(status === 'TIDAK SEHAT' || status === 'UNHEALTHY'){
-      return '⚠️ Udara TIDAK SEHAT bagi kelompok sensitif (anak, lansia, asma). Kurangi aktivitas berat luar ruang dan gunakan pelindung pernapasan.';
-    }
-    if(status === 'SEDANG' || status === 'MODERATE'){
-      return '✅ Kualitas udara SEDANG. Aktivitas luar ruang diperbolehkan, tapi kelompok sensitif kurangi paparan lama.';
-    }
-    if(status === 'BAIK' || status === 'GOOD' || status === 'NORMAL'){
-      return '✅ Kualitas udara BAIK. Semua aktivitas dalam/luar ruangan aman dilakukan secara normal.';
-    }
-    return '⏳ Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi tepat.';
+      s:(avg(v.s)).toFixed(1),
+      h:(avg(v.h)).toFixed(1),
+      c:Math.round(avg(v.c)),
+      d:(avg(v.d)).toFixed(1),
+      count: v.count
+    })).sort((a,b)=>new Date(b.time)-new Date(a.time));
   }
 
-  // ================= RENDER =================
+  // ================= TABEL RENDER DENGAN STATUS =================
+  function renderTable(viewData) {
+    const tbody = document.getElementById('table-body');
+    
+    if (viewData.length === 0) {
+      tbody.innerHTML = `
+        <tr class="h-24">
+          <td colspan="5" class="p-8 text-center text-slate-500 italic">
+            <div class="flex flex-col items-center gap-2">
+              <span class="text-3xl">📊</span>
+              <span>Tidak ada data untuk ditampilkan</span>
+            </div>
+          </td>
+        </tr>`;
+      return;
+    }
+
+    tbody.innerHTML = viewData.map((row, idx) => {
+      const statusClass = row.status?.toLowerCase() || 'baik';
+      const statusColor = {
+        'baik': 'text-emerald-400',
+        'sedang': 'text-amber-400',
+        'buruk': 'text-rose-400'
+      }[statusClass] || 'text-slate-400';
+      
+      return `
+        <tr class="table-row transition-all hover:scale-[1.01] border-b border-[#26292e]/50 group">
+          <td class="p-3 font-mono text-slate-300 group-hover:text-white">${row.time}</td>
+          <td class="p-3 text-center text-rose-400 font-mono">${row.s}°C</td>
+          <td class="p-3 text-center text-cyan-400 font-mono">${row.h}%</td>
+          <td class="p-3 text-center text-emerald-400 font-mono">${row.c}ppm</td>
+          <td class="p-3 text-center">
+            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-slate-800/50 ${statusClass === 'buruk' ? 'status-buruk' : statusClass === 'sedang' ? 'status-sedang' : 'status-baik'}">
+              <span class="${statusColor} font-bold">${row.status || '—'}</span>
+              <span class="text-slate-500">${row.d}μg</span>
+            </span>
+          </td>
+        </tr>`;
+    }).join('');
+  }
+
+  // ================= STATS =================
+  function updateStats(data) {
+    document.getElementById('total-data').textContent = logData.length.toLocaleString();
+    if (data.length > 0) {
+      const allSuhu = data.flatMap(r => parseFloat(r.s));
+      const allCO2 = data.flatMap(r => parseFloat(r.c));
+      const allDust = data.flatMap(r => parseFloat(r.d));
+      
+      document.getElementById('avg-co2').textContent = Math.round(avg(allCO2)) + 'ppm';
+      document.getElementById('max-temp').textContent = Math.max(...allSuhu).toFixed(1) + '°C';
+      document.getElementById('max-dust').textContent = Math.max(...allDust).toFixed(0) + 'μg';
+    }
+  }
+
+  // ================= MAIN RENDER =================
   function render(){
-    const data=getAggregated();
-    const start=Math.max(0,data.length-historyLimit-pageOffset);
-    const view=data.slice(start,data.length-pageOffset);
-
-    chartTemp.data.labels=view.map(v=>v.time);
-    chartHum.data.labels=view.map(v=>v.time);
-    chartCO2.data.labels=view.map(v=>v.time);
-    chartDust.data.labels=view.map(v=>v.time);
-
-    chartTemp.data.datasets[0].data=view.map(v=>v.s);
-    chartHum.data.datasets[0].data=view.map(v=>v.h);
-    chartCO2.data.datasets[0].data=view.map(v=>v.c);
-    chartDust.data.datasets[0].data=view.map(v=>v.d);
-
-    chartTemp.update();
-    chartHum.update();
-    chartCO2.update();
-    chartDust.update();
-
-    document.getElementById('table-body').innerHTML=view.reverse().map(v=>`
-      <tr>
-        <td class="p-2">${v.time}</td>
-        <td class="p-2">${v.s}</td>
-        <td class="p-2">${v.h}</td>
-        <td class="p-2">${v.c}</td>
-        <td class="p-2">${v.d}</td>
-      </tr>`).join('');
+    const data = getAggregated();
+    totalPages = Math.ceil(data.length / historyLimit);
+    const start = Math.max(0, data.length - (pageOffset + historyLimit));
+    const view = data.slice(start, data.length - pageOffset);
+    
+    // Charts
+    ['Temp','Hum','CO2','Dust'].forEach((chart,i)=>{
+      const charts = [chartTemp,chartHum,chartCO2,chartDust];
+      charts[i].data.labels = view.map(v=>v.time.slice(-8));
+      charts[i].data.datasets[0].data = view.map(v=>[v.s,v.h,v.c,v.d][i]);
+      charts[i].update('none');
+    });
+    
+    // Table + Stats
+    renderTable(view);
+    updateStats(data);
+    
+    // Pagination
+    document.getElementById('page-info').textContent = `${Math.floor(pageOffset/historyLimit)+1} / ${totalPages}`;
   }
 
-  // ================= FIREBASE LISTENER =================
+  // ================= DESKRIPSI STATUS =================
+  function getStatusDescription(status, v){
+    const desc = {
+      'BURUK': '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95.',
+      'SEDANG': '⚠️ Udara SEDANG. Kelompok sensitif (anak/lansia) kurangi aktivitas luar ruangan.',
+      'BAIK': '✅ Kualitas udara BAIK. Aktivitas normal aman dilakukan.',
+      'NORMAL': '✅ Kondisi udara normal untuk aktivitas sehari-hari.'
+    }[status] || '⏳ Menunggu data sensor...';
+    return desc;
+  }
+
+  // ================= FIREBASE LIVE DATA =================
   db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
-    const v=s.val(); if(!v)return;
+    const v = s.val();
+    if(!v || v.suhu === undefined) return;
 
-    document.getElementById('dash-temp').textContent=v.suhu+' °C';
-    document.getElementById('dash-hum').textContent=v.kelembapan+' %';
-    document.getElementById('dash-co2').textContent=v.co2+' ppm';
-    document.getElementById('dash-dust').textContent=v.debu+' µg/m³';
+    // Update dashboard
+    document.getElementById('dash-temp').textContent = parseFloat(v.suhu).toFixed(1) + ' °C';
+    document.getElementById('dash-hum').textContent = parseFloat(v.kelembapan).toFixed(1) + ' %';
+    document.getElementById('dash-co2').textContent = Math.round(v.co2) + ' ppm';
+    document.getElementById('dash-dust').textContent = parseFloat(v.debu).toFixed(0) + ' µg/m³';
 
-    const statusText=(v.status||'NORMAL').toUpperCase();
-    document.getElementById('status').textContent=statusText;
-    document.getElementById('last-update').textContent=new Date().toLocaleString();
-    document.getElementById('status-desc').textContent=getStatusDescription(statusText,v);
+    const statusText = (v.status || 'NORMAL').toUpperCase();
+    document.getElementById('status').textContent = statusText;
+    document.getElementById('status').className = `text-3xl lg:text-4xl font-black mb-4 ${statusText === 'BAIK' ? 'text-emerald-400' : statusText === 'SEDANG' ? 'text-amber-400' : 'text-rose-400'}`;
+    document.getElementById('last-update').textContent = new Date().toLocaleString('id-ID');
+    document.getElementById('status-desc').textContent = getStatusDescription(statusText, v);
 
-    logData.push({t:Date.now(),s:+v.suhu,h:+v.kelembapan,c:+v.co2,d:+v.debu});
-    if(logData.length>5000)logData.shift();
-    localStorage.setItem('iaq_logs',JSON.stringify(logData));
+    // Add to log
+    logData.push({
+      t: Date.now(),
+      s: parseFloat(v.suhu),
+      h: parseFloat(v.kelembapan),
+      c: parseFloat(v.co2),
+      d: parseFloat(v.debu),
+      status: statusText
+    });
+    
+    if(logData.length > 5000) logData.shift();
+    localStorage.setItem('iaq_logs', JSON.stringify(logData));
+    
     render();
   });
 
-  // ================= CONTROL =================
+  // ================= CONTROLS =================
   function setFilter(f,e){
-    currentFilter=f;
+    currentFilter = f;
     document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
     e.classList.add('active-filter');
+    pageOffset = 0;
     render();
   }
-  function changeHistoryRange(v){historyLimit=+v;pageOffset=0;render()}
-  function prevPage(){pageOffset+=historyLimit;render()}
-  function nextPage(){pageOffset=Math.max(0,pageOffset-historyLimit);render()}
-  function clearHistory(){if(confirm('Hapus histori?')){logData=[];localStorage.clear();render()}}
-  function showSection(s){
-    document.getElementById('section-dashboard').classList.toggle('hidden',s!=='dashboard');
-    document.getElementById('section-recap').classList.toggle('hidden',s!=='recap');
+
+  function changeHistoryRange(v){
+    historyLimit = +v;
+    pageOffset = 0;
+    render();
   }
+
+  function prevPage(){
+    if(pageOffset >= historyLimit) pageOffset -= historyLimit;
+    render();
+  }
+
+  function nextPage(){
+    if(pageOffset + historyLimit < logData.length) pageOffset += historyLimit;
+    render();
+  }
+
+  function clearHistory(){
+    if(confirm('🗑️ Hapus semua histori data? (Grafik & tabel akan kosong)')){
+      logData = [];
+      localStorage.removeItem('iaq_logs');
+      pageOffset = 0;
+      render();
+    }
+  }
+
+  function showSection(s){
+    document.getElementById('section-dashboard').classList.toggle('hidden', s !== 'dashboard');
+    document.getElementById('section-recap').classList.toggle('hidden', s !== 'recap');
+    if(s === 'recap') render();  // Auto refresh table
+  }
+
+  // Initial render
+  render();
 </script>
 </body>
 </html>
