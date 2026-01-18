@@ -1,384 +1,127 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring Kualitas Udara</title>
+#include <WiFi.h>
+#include <FirebaseESP32.h>
+#include <DHT.h>
+#include "time.h"
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+/* ================== WIFI ================== */
+#define WIFI_SSID     "ESP32_TEST"
+#define WIFI_PASSWORD "12345678"
 
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-    body{background:#0b0e14;font-family:Inter;color:#d8d9da}
-    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px}
-    .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
-    .active-filter{background:#3274d9;color:#fff}
-    .status-baik { background: linear-gradient(135deg, #10b98133, #05966933); border-left: 4px solid #10b981; }
-    .status-sedang { background: linear-gradient(135deg, #f59e0a33, #d9770633); border-left: 4px solid #f59e0a; }
-    .status-buruk { background: linear-gradient(135deg, #ef444433, #dc262633); border-left: 4px solid #ef4444; }
-    .table-row:hover { background: #26292e !important; }
-  </style>
-</head>
+/* ================= FIREBASE ================= */
+#define FIREBASE_HOST "monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
+#define FIREBASE_AUTH "ISI_DENGAN_DATABASE_SECRET"
 
-<body class="p-4 lg:p-8">
-<div class="max-w-7xl mx-auto">
+/* ================= PIN CONFIG ================= */
+#define DHTPIN 27
+#define DHTTYPE DHT22
 
-  <header class="flex justify-between items-center mb-6 card p-4">
-    <h1 class="text-xl font-black text-white">
-      MONITORING KUALITAS UDARA
-      <span class="text-xs text-blue-500">Kelompok 11</span>
-    </h1>
-    <nav class="flex gap-6">
-      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold">MONITOR</button>
-      <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold text-slate-500">ANALITIK</button>
-    </nav>
-  </header>
+#define MQ135_PIN 34
+#define DUST_LED  25
+#define DUST_PIN  35
 
-  <!-- ================= DASHBOARD ================= -->
-  <div id="section-dashboard" class="space-y-4">
-    <!-- 4 CARD METRIK -->
-    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="card p-4">
-        <p class="text-xs text-rose-400">Suhu</p>
-        <h3 id="dash-temp" class="text-2xl font-black">-- °C</h3>
-      </div>
-      <div class="card p-4">
-        <p class="text-xs text-cyan-400">Kelembapan</p>
-        <h3 id="dash-hum" class="text-2xl font-black">-- %</h3>
-      </div>
-      <div class="card p-4">
-        <p class="text-xs text-emerald-400">CO₂</p>
-        <h3 id="dash-co2" class="text-2xl font-black">-- ppm</h3>
-      </div>
-      <div class="card p-4">
-        <p class="text-xs text-amber-400">Debu</p>
-        <h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3>
-      </div>
-    </div>
+#define BUZZER_PIN 26
 
-    <!-- LAYOUT 2 KOLOM: STATUS + DESKRIPSI -->
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- KIRI: STATUS UTAMA -->
-      <div class="card p-6">
-        <p class="text-xs text-slate-400 font-bold mb-2">Kondisi Udara</p>
-        <h2 id="status" class="text-3xl lg:text-4xl font-black text-slate-500 mb-4">MENUNGGU DATA</h2>
-        <p id="last-update" class="text-[10px] text-slate-600 italic"></p>
-      </div>
+/* ================= OBJECT ================= */
+FirebaseData fbdo;
+FirebaseConfig config;
+FirebaseAuth auth;
+DHT dht(DHTPIN, DHTTYPE);
 
-      <!-- KANAN: DESKRIPSI KONDITSI -->
-      <div class="card p-6 lg:p-8">
-        <p class="text-xs text-slate-400 font-bold mb-3">Rekomendasi Tindakan</p>
-        <div id="status-desc" class="text-sm text-slate-300 leading-relaxed">
-          Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi yang tepat.
-        </div>
-      </div>
-    </div>
-  </div>
+/* ================= VAR ================= */
+unsigned long lastSend = 0;
 
-  <!-- ================= ANALITIK ================= -->
-  <div id="section-recap" class="hidden">
-    <div class="card p-6">
+/* ================= FUNCTION ================= */
+float readDust() {
+  digitalWrite(DUST_LED, LOW);
+  delayMicroseconds(280);
+  int adc = analogRead(DUST_PIN);
+  delayMicroseconds(40);
+  digitalWrite(DUST_LED, HIGH);
 
-      <!-- FILTER & PAGINATION -->
-      <div class="flex flex-wrap gap-2 items-center mb-6">
-        <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
+  float voltage = adc * (3.3 / 4095.0);
+  float dust = max(0.0, (voltage - 0.9) * 1000.0);
+  return dust;
+}
 
-        <select onchange="changeHistoryRange(this.value)"
-                class="ml-4 bg-[#111217] border border-[#26292e] text-xs px-2 py-1 rounded">
-          <option value="50">50 Data</option>
-          <option value="100">100 Data</option>
-          <option value="150">150 Data</option>
-          <option value="200">200 Data</option>
-        </select>
+float readCO2() {
+  int adc = analogRead(MQ135_PIN);
+  float voltage = adc * (3.3 / 4095.0);
+  return voltage * 1000 + 400; // estimasi
+}
 
-        <div class="flex items-center gap-1 ml-auto text-xs text-slate-500">
-          <button onclick="prevPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Sebelumnya">◀</button>
-          <span id="page-info" class="px-2">1 / 1</span>
-          <button onclick="nextPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Selanjutnya">▶</button>
-        </div>
+String airStatus(float co2, float dust) {
+  if (co2 > 1200 || dust > 150) return "BURUK";
+  if (co2 > 800 || dust > 75) return "SEDANG";
+  return "BAIK";
+}
 
-        <button onclick="clearHistory()" class="ml-2 bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs text-white rounded transition-all">
-          🗑️ Reset Histori
-        </button>
-      </div>
+/* ================= SETUP ================= */
+void setup() {
+  Serial.begin(115200);
 
-      <!-- CHARTS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-rose-500 mb-2">Suhu</p>
-          <canvas id="chartTemp"></canvas>
-        </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-cyan-500 mb-2">Kelembapan</p>
-          <canvas id="chartHum"></canvas>
-        </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-emerald-500 mb-2">CO₂</p>
-          <canvas id="chartCO2"></canvas>
-        </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-amber-500 mb-2">Debu</p>
-          <canvas id="chartDust"></canvas>
-        </div>
-      </div>
+  pinMode(DUST_LED, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(DUST_LED, HIGH);
+  digitalWrite(BUZZER_PIN, LOW);
 
-      <!-- TABEL DATA DIPERBAIKI -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs border border-[#26292e] rounded-lg overflow-hidden">
-          <thead class="bg-[#111217] sticky top-0 z-10">
-            <tr>
-              <th class="p-3 text-left font-bold text-slate-200 border-r border-[#26292e]">⏰ Waktu</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">🌡️ Suhu</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">💧 Hum</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">☁️ CO₂</th>
-              <th class="p-3 text-center font-bold text-slate-200">🌫️ Debu</th>
-            </tr>
-          </thead>
-          <tbody id="table-body" class="divide-y divide-[#26292e]">
-            <!-- Data akan diisi JS -->
-          </tbody>
-        </table>
-      </div>
+  dht.begin();
 
-      <!-- INFO STATS -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-xs text-center p-4 bg-[#111217] rounded-lg">
-        <div><span class="font-bold text-emerald-400" id="total-data">--</span><br><span class="text-slate-500">Total Data</span></div>
-        <div><span class="font-bold text-amber-400" id="avg-co2">--</span><br><span class="text-slate-500">Rata² CO₂</span></div>
-        <div><span class="font-bold text-rose-400" id="max-temp">--</span><br><span class="text-slate-500">Suhu Tertinggi</span></div>
-        <div><span class="font-bold text-yellow-400" id="max-dust">--</span><br><span class="text-slate-500">Debu Tertinggi</span></div>
-      </div>
-
-    </div>
-  </div>
-</div>
-
-<script>
-  // ================= FIREBASE =================
-  firebase.initializeApp({
-    apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
-  });
-  const db = firebase.database();
-
-  // ================= DATA =================
-  let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-  let currentFilter='sec', historyLimit=50, pageOffset=0;
-  let totalPages = 1;
-
-  // ================= CHART BUILDER =================
-  function buildChart(id,color,yLabel){
-    return new Chart(document.getElementById(id),{
-      type:'line',
-      data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:0.3}]},
-      options:{
-        responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-        scales:{
-          x:{ticks:{color:'#888',font:{size:10}},title:{display:true,text:'Waktu',color:'#aaa',font:{size:11,weight:'bold'}}},
-          y:{ticks:{color:'#888'},beginAtZero:true,title:{display:true,text:yLabel,color:'#aaa',font:{size:11,weight:'bold'}}}
-        }
-      }
-    });
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500); Serial.print(".");
   }
+  Serial.println("\nWiFi Connected");
 
-  const chartTemp = buildChart('chartTemp','#f03e3e','Suhu (°C)');
-  const chartHum  = buildChart('chartHum','#339af0','Kelembapan (%)');
-  const chartCO2  = buildChart('chartCO2','#51cf66','CO₂ (ppm)');
-  const chartDust = buildChart('chartDust','#fcc419','Debu (µg/m³)');
+  config.host = FIREBASE_HOST;
+  config.signer.tokens.legacy_token = FIREBASE_AUTH;
+  Firebase.begin(&config, &auth);
+  Firebase.reconnectWiFi(true);
 
-  // ================= HELPERS =================
-  const avg = a => a.reduce((x,y)=>x+y)/a.length;
+  configTime(7 * 3600, 0, "pool.ntp.org");
+}
 
-  function getAggregated(){
-    const g={};
-    logData.slice(-1000).forEach(d=>{  // Limit processing
-      const t=new Date(d.t);
-      let k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
-      if(currentFilter==='min')k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
-      if(currentFilter==='hour')k=t.toLocaleString('id-ID',{hour:'2-digit'});
-      if(currentFilter==='day')k=t.toLocaleDateString('id-ID');
-      if(!g[k])g[k]={s:[],h:[],c:[],d:[],count:0};
-      g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);g[k].count++;
-    });
-    return Object.entries(g).map(([k,v])=>({
-      time:k,
-      s:(avg(v.s)).toFixed(1),
-      h:(avg(v.h)).toFixed(1),
-      c:Math.round(avg(v.c)),
-      d:(avg(v.d)).toFixed(1),
-      count: v.count
-    })).sort((a,b)=>new Date(b.time)-new Date(a.time));
-  }
+/* ================= LOOP ================= */
+void loop() {
+  if (millis() - lastSend >= 3000) {
+    lastSend = millis();
 
-  // ================= TABEL RENDER DENGAN STATUS =================
-  function renderTable(viewData) {
-    const tbody = document.getElementById('table-body');
-    
-    if (viewData.length === 0) {
-      tbody.innerHTML = `
-        <tr class="h-24">
-          <td colspan="5" class="p-8 text-center text-slate-500 italic">
-            <div class="flex flex-col items-center gap-2">
-              <span class="text-3xl">📊</span>
-              <span>Tidak ada data untuk ditampilkan</span>
-            </div>
-          </td>
-        </tr>`;
+    float suhu = dht.readTemperature();
+    float hum  = dht.readHumidity();
+    float co2  = readCO2();
+    float dust = readDust();
+
+    if (isnan(suhu) || isnan(hum)) {
+      Serial.println("DHT Error");
       return;
     }
 
-    tbody.innerHTML = viewData.map((row, idx) => {
-      const statusClass = row.status?.toLowerCase() || 'baik';
-      const statusColor = {
-        'baik': 'text-emerald-400',
-        'sedang': 'text-amber-400',
-        'buruk': 'text-rose-400'
-      }[statusClass] || 'text-slate-400';
-      
-      return `
-        <tr class="table-row transition-all hover:scale-[1.01] border-b border-[#26292e]/50 group">
-          <td class="p-3 font-mono text-slate-300 group-hover:text-white">${row.time}</td>
-          <td class="p-3 text-center text-rose-400 font-mono">${row.s}°C</td>
-          <td class="p-3 text-center text-cyan-400 font-mono">${row.h}%</td>
-          <td class="p-3 text-center text-emerald-400 font-mono">${row.c}ppm</td>
-          <td class="p-3 text-center">
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-slate-800/50 ${statusClass === 'buruk' ? 'status-buruk' : statusClass === 'sedang' ? 'status-sedang' : 'status-baik'}">
-              <span class="${statusColor} font-bold">${row.status || '—'}</span>
-              <span class="text-slate-500">${row.d}μg</span>
-            </span>
-          </td>
-        </tr>`;
-    }).join('');
-  }
-
-  // ================= STATS =================
-  function updateStats(data) {
-    document.getElementById('total-data').textContent = logData.length.toLocaleString();
-    if (data.length > 0) {
-      const allSuhu = data.flatMap(r => parseFloat(r.s));
-      const allCO2 = data.flatMap(r => parseFloat(r.c));
-      const allDust = data.flatMap(r => parseFloat(r.d));
-      
-      document.getElementById('avg-co2').textContent = Math.round(avg(allCO2)) + 'ppm';
-      document.getElementById('max-temp').textContent = Math.max(...allSuhu).toFixed(1) + '°C';
-      document.getElementById('max-dust').textContent = Math.max(...allDust).toFixed(0) + 'μg';
+    String status = airStatus(co2, dust);
+    if (status == "BURUK") {
+      digitalWrite(BUZZER_PIN, HIGH);
+    } else {
+      digitalWrite(BUZZER_PIN, LOW);
     }
+
+    time_t now;
+    time(&now);
+
+    FirebaseJson json;
+    json.set("suhu", suhu);
+    json.set("kelembapan", hum);
+    json.set("co2", co2);
+    json.set("debu", dust);
+    json.set("status", status);
+    json.set("timestamp", now);
+
+    // ================= LIVE =================
+    Firebase.setJSON(fbdo, "/latest_sensor", json);
+
+    // ================= HISTORI =================
+    Firebase.pushJSON(fbdo, "/log_sensor", json);
+
+    Serial.println("Data sent:");
+    Serial.printf("T:%.1f H:%.1f CO2:%.0f Dust:%.0f Status:%s\n",
+                  suhu, hum, co2, dust, status.c_str());
   }
-
-  // ================= MAIN RENDER =================
-  function render(){
-    const data = getAggregated();
-    totalPages = Math.ceil(data.length / historyLimit);
-    const start = Math.max(0, data.length - (pageOffset + historyLimit));
-    const view = data.slice(start, data.length - pageOffset);
-    
-    // Charts
-    ['Temp','Hum','CO2','Dust'].forEach((chart,i)=>{
-      const charts = [chartTemp,chartHum,chartCO2,chartDust];
-      charts[i].data.labels = view.map(v=>v.time.slice(-8));
-      charts[i].data.datasets[0].data = view.map(v=>[v.s,v.h,v.c,v.d][i]);
-      charts[i].update('none');
-    });
-    
-    // Table + Stats
-    renderTable(view);
-    updateStats(data);
-    
-    // Pagination
-    document.getElementById('page-info').textContent = `${Math.floor(pageOffset/historyLimit)+1} / ${totalPages}`;
-  }
-
-  // ================= DESKRIPSI STATUS =================
-  function getStatusDescription(status, v){
-    const desc = {
-      'BURUK': '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95.',
-      'SEDANG': '⚠️ Udara SEDANG. Kelompok sensitif (anak/lansia) kurangi aktivitas luar ruangan.',
-      'BAIK': '✅ Kualitas udara BAIK. Aktivitas normal aman dilakukan.',
-      'NORMAL': '✅ Kondisi udara normal untuk aktivitas sehari-hari.'
-    }[status] || '⏳ Menunggu data sensor...';
-    return desc;
-  }
-
-  // ================= FIREBASE LIVE DATA =================
-  db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
-    const v = s.val();
-    if(!v || v.suhu === undefined) return;
-
-    // Update dashboard
-    document.getElementById('dash-temp').textContent = parseFloat(v.suhu).toFixed(1) + ' °C';
-    document.getElementById('dash-hum').textContent = parseFloat(v.kelembapan).toFixed(1) + ' %';
-    document.getElementById('dash-co2').textContent = Math.round(v.co2) + ' ppm';
-    document.getElementById('dash-dust').textContent = parseFloat(v.debu).toFixed(0) + ' µg/m³';
-
-    const statusText = (v.status || 'NORMAL').toUpperCase();
-    document.getElementById('status').textContent = statusText;
-    document.getElementById('status').className = `text-3xl lg:text-4xl font-black mb-4 ${statusText === 'BAIK' ? 'text-emerald-400' : statusText === 'SEDANG' ? 'text-amber-400' : 'text-rose-400'}`;
-    document.getElementById('last-update').textContent = new Date().toLocaleString('id-ID');
-    document.getElementById('status-desc').textContent = getStatusDescription(statusText, v);
-
-    // Add to log
-    logData.push({
-      t: Date.now(),
-      s: parseFloat(v.suhu),
-      h: parseFloat(v.kelembapan),
-      c: parseFloat(v.co2),
-      d: parseFloat(v.debu),
-      status: statusText
-    });
-    
-    if(logData.length > 5000) logData.shift();
-    localStorage.setItem('iaq_logs', JSON.stringify(logData));
-    
-    render();
-  });
-
-  // ================= CONTROLS =================
-  function setFilter(f,e){
-    currentFilter = f;
-    document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-    e.classList.add('active-filter');
-    pageOffset = 0;
-    render();
-  }
-
-  function changeHistoryRange(v){
-    historyLimit = +v;
-    pageOffset = 0;
-    render();
-  }
-
-  function prevPage(){
-    if(pageOffset >= historyLimit) pageOffset -= historyLimit;
-    render();
-  }
-
-  function nextPage(){
-    if(pageOffset + historyLimit < logData.length) pageOffset += historyLimit;
-    render();
-  }
-
-  function clearHistory(){
-    if(confirm('🗑️ Hapus semua histori data? (Grafik & tabel akan kosong)')){
-      logData = [];
-      localStorage.removeItem('iaq_logs');
-      pageOffset = 0;
-      render();
-    }
-  }
-
-  function showSection(s){
-    document.getElementById('section-dashboard').classList.toggle('hidden', s !== 'dashboard');
-    document.getElementById('section-recap').classList.toggle('hidden', s !== 'recap');
-    if(s === 'recap') render();  // Auto refresh table
-  }
-
-  // Initial render
-  render();
-</script>
-</body>
-</html>
+}
