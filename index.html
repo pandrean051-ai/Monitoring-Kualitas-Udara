@@ -35,6 +35,7 @@
 
   <!-- ================= DASHBOARD ================= -->
   <div id="section-dashboard" class="space-y-4">
+    <!-- 4 CARD METRIK -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
       <div class="card p-4">
         <p class="text-xs text-rose-400">Suhu</p>
@@ -54,14 +55,24 @@
       </div>
     </div>
 
-    <div class="card p-4">
-      <p class="text-xs text-slate-400 font-bold">Kondisi Udara</p>
-      <h2 id="status" class="text-2xl font-black text-slate-500">MENUNGGU DATA</h2>
-      <p id="last-update" class="text-[10px] text-slate-600 italic mt-2"></p>
-      <!-- DESKRIPSI KONDISI UDARA -->
-      <p id="status-desc" class="text-[11px] text-slate-300 mt-3 leading-relaxed">
-        Menunggu data kualitas udara terkini dari sensor.
-      </p>
+    <!-- LAYOUT 2 KOLOM: STATUS + DESKRIPSI -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      
+      <!-- KIRI: STATUS UTAMA -->
+      <div class="card p-6">
+        <p class="text-xs text-slate-400 font-bold mb-2">Kondisi Udara</p>
+        <h2 id="status" class="text-3xl lg:text-4xl font-black text-slate-500 mb-4">MENUNGGU DATA</h2>
+        <p id="last-update" class="text-[10px] text-slate-600 italic"></p>
+      </div>
+
+      <!-- KANAN: DESKRIPSI KONDITSI -->
+      <div class="card p-6 lg:p-8">
+        <p class="text-xs text-slate-400 font-bold mb-3">Rekomendasi Tindakan</p>
+        <div id="status-desc" class="text-sm text-slate-300 leading-relaxed">
+          Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi yang tepat.
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -213,18 +224,18 @@
   function getStatusDescription(status, v){
     status = (status || '').toUpperCase();
     if(status === 'BURUK'){
-      return 'Kualitas udara di area ini tergolong buruk. Disarankan membatasi aktivitas luar ruang, menutup jendela, dan menggunakan masker jika harus beraktivitas di luar.';
+      return '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95 jika keluar, dan aktifkan purifier udara.';
     }
     if(status === 'TIDAK SEHAT' || status === 'UNHEALTHY'){
-      return 'Udara tidak sehat bagi kelompok sensitif seperti anak-anak, lansia, dan penderita penyakit pernapasan. Kurangi aktivitas berat di luar dan gunakan pelindung pernapasan.';
+      return '⚠️ Udara TIDAK SEHAT bagi kelompok sensitif (anak, lansia, asma). Kurangi aktivitas berat luar ruang dan gunakan pelindung pernapasan.';
     }
     if(status === 'SEDANG' || status === 'MODERATE'){
-      return 'Kualitas udara sedang. Aktivitas luar ruang masih diperbolehkan, namun kelompok sensitif sebaiknya mengurangi paparan jangka panjang.';
+      return '✅ Kualitas udara SEDANG. Aktivitas luar ruang diperbolehkan, tapi kelompok sensitif kurangi paparan lama.';
     }
     if(status === 'BAIK' || status === 'GOOD' || status === 'NORMAL'){
-      return 'Kualitas udara tergolong baik. Aktivitas dalam dan luar ruangan dapat dilakukan secara normal.';
+      return '✅ Kualitas udara BAIK. Semua aktivitas dalam/luar ruangan aman dilakukan secara normal.';
     }
-    return 'Kondisi udara tidak terklasifikasi. Periksa nilai suhu, kelembapan, CO₂, dan debu pada panel di atas untuk penilaian lebih lanjut.';
+    return '⏳ Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi tepat.';
   }
 
   // ================= RENDER =================
@@ -235,8 +246,8 @@
 
     chartTemp.data.labels=view.map(v=>v.time);
     chartHum.data.labels=view.map(v=>v.time);
-    chartCO2.data.labels=view.map(v=>v.c);
-    chartDust.data.labels=view.map(v=>v.d);
+    chartCO2.data.labels=view.map(v=>v.time);
+    chartDust.data.labels=view.map(v=>v.time);
 
     chartTemp.data.datasets[0].data=view.map(v=>v.s);
     chartHum.data.datasets[0].data=view.map(v=>v.h);
