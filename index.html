@@ -3,382 +3,505 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Monitoring Kualitas Udara</title>
+  <title>Monitoring Kualitas Udara - Fixed Charts</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
     body{background:#0b0e14;font-family:Inter;color:#d8d9da}
-    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px}
+    .card{background:#181b1f;border:1px solid #26292e;border-radius:4px;padding:1.5rem}
     .nav-active{border-bottom:3px solid #3274d9;color:#3274d9}
     .active-filter{background:#3274d9;color:#fff}
     .status-baik { background: linear-gradient(135deg, #10b98133, #05966933); border-left: 4px solid #10b981; }
     .status-sedang { background: linear-gradient(135deg, #f59e0a33, #d9770633); border-left: 4px solid #f59e0a; }
     .status-buruk { background: linear-gradient(135deg, #ef444433, #dc262633); border-left: 4px solid #ef4444; }
     .table-row:hover { background: #26292e !important; }
+    .chart-container { height: 260px; position: relative; }
   </style>
 </head>
 
 <body class="p-4 lg:p-8">
 <div class="max-w-7xl mx-auto">
 
-  <header class="flex justify-between items-center mb-6 card p-4">
+  <header class="flex justify-between items-center mb-6 card">
     <h1 class="text-xl font-black text-white">
       MONITORING KUALITAS UDARA
-      <span class="text-xs text-blue-500">Kelompok 11</span>
+      <span class="text-xs text-emerald-500 ml-2">✅ Charts Fixed</span>
     </h1>
     <nav class="flex gap-6">
-      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold">MONITOR</button>
-      <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold text-slate-500">ANALITIK</button>
+      <button id="btn-dashboard" onclick="showSection('dashboard')" class="nav-active text-xs font-bold px-3 py-2 rounded hover:bg-slate-800 transition-all">📊 MONITOR</button>
+      <button id="btn-recap" onclick="showSection('recap')" class="text-xs font-bold px-3 py-2 rounded hover:bg-slate-800 transition-all text-slate-400">📈 ANALITIK</button>
     </nav>
   </header>
 
-  <!-- ================= DASHBOARD ================= -->
+  <!-- DASHBOARD -->
   <div id="section-dashboard" class="space-y-4">
-    <!-- 4 CARD METRIK -->
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-      <div class="card p-4">
-        <p class="text-xs text-rose-400">Suhu</p>
-        <h3 id="dash-temp" class="text-2xl font-black">-- °C</h3>
+      <div class="card">
+        <p class="text-xs text-rose-400 font-medium mb-1">🌡️ Suhu</p>
+        <h3 id="dash-temp" class="text-3xl font-black text-rose-400">-- °C</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="temp-bar" class="bg-rose-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs text-cyan-400">Kelembapan</p>
-        <h3 id="dash-hum" class="text-2xl font-black">-- %</h3>
+      <div class="card">
+        <p class="text-xs text-cyan-400 font-medium mb-1">💧 Kelembapan</p>
+        <h3 id="dash-hum" class="text-3xl font-black text-cyan-400">-- %</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="hum-bar" class="bg-cyan-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs text-emerald-400">CO₂</p>
-        <h3 id="dash-co2" class="text-2xl font-black">-- ppm</h3>
+      <div class="card">
+        <p class="text-xs text-emerald-400 font-medium mb-1">☁️ CO₂</p>
+        <h3 id="dash-co2" class="text-3xl font-black text-emerald-400">-- ppm</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="co2-bar" class="bg-emerald-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
       </div>
-      <div class="card p-4">
-        <p class="text-xs text-amber-400">Debu</p>
-        <h3 id="dash-dust" class="text-2xl font-black">-- µg/m³</h3>
+      <div class="card">
+        <p class="text-xs text-amber-400 font-medium mb-1">🌫️ Debu PM2.5</p>
+        <h3 id="dash-dust" class="text-3xl font-black text-amber-400">-- μg/m³</h3>
+        <div class="w-full bg-slate-800 rounded-full h-2 mt-2">
+          <div id="dust-bar" class="bg-amber-500 h-2 rounded-full" style="width:0%"></div>
+        </div>
       </div>
     </div>
 
-    <!-- LAYOUT 2 KOLOM: STATUS + DESKRIPSI -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <!-- KIRI: STATUS UTAMA -->
-      <div class="card p-6">
-        <p class="text-xs text-slate-400 font-bold mb-2">Kondisi Udara</p>
-        <h2 id="status" class="text-3xl lg:text-4xl font-black text-slate-500 mb-4">MENUNGGU DATA</h2>
-        <p id="last-update" class="text-[10px] text-slate-600 italic"></p>
+      <div class="card">
+        <p class="text-sm font-bold text-slate-300 mb-4">🎯 Status Kualitas Udara</p>
+        <h2 id="status-main" class="text-4xl font-black mb-4 text-slate-500">MENUNGGU DATA</h2>
+        <p id="last-update" class="text-xs text-slate-500 italic mb-2">Tidak ada koneksi</p>
+        <div class="flex items-center gap-4 text-sm">
+          <span class="px-3 py-1 bg-slate-800 rounded-full text-xs">📶 <span id="connection">Offline</span></span>
+          <span class="px-3 py-1 bg-slate-800 rounded-full text-xs">💾 <span id="data-count">0</span> data</span>
+        </div>
       </div>
-
-      <!-- KANAN: DESKRIPSI KONDITSI -->
-      <div class="card p-6 lg:p-8">
-        <p class="text-xs text-slate-400 font-bold mb-3">Rekomendasi Tindakan</p>
-        <div id="status-desc" class="text-sm text-slate-300 leading-relaxed">
-          Menunggu data kualitas udara terkini dari sensor untuk memberikan rekomendasi yang tepat.
+      <div class="card">
+        <p class="text-sm font-bold text-slate-300 mb-4">💡 Rekomendasi Tindakan</p>
+        <div id="status-desc" class="text-base leading-relaxed text-slate-300">
+          Menunggu data pertama dari sensor ESP32...
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ================= ANALITIK ================= -->
-  <div id="section-recap" class="hidden">
-    <div class="card p-6">
+  <!-- ANALITIK -->
+  <div id="section-recap" class="hidden space-y-6">
+    <div class="flex flex-wrap gap-3 items-center mb-6 p-4 bg-slate-900/50 rounded-xl">
+      <div class="flex gap-1">
+        <button class="f-btn active-filter px-4 py-2 text-sm rounded-lg" onclick="setFilter('sec',this)">🔴 Live</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('min',this)">⏱️ Menit</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('hour',this)">🕐 Jam</button>
+        <button class="f-btn px-4 py-2 text-sm rounded-lg" onclick="setFilter('day',this)">📅 Hari</button>
+      </div>
+      
+      <select onchange="changeHistoryRange(this.value)" class="bg-slate-800 border border-slate-600 text-sm px-3 py-2 rounded-lg">
+        <option value="20">20 Data Terbaru</option>
+        <option value="50" selected>50 Data</option>
+        <option value="100">100 Data</option>
+        <option value="200">200 Data</option>
+      </select>
 
-      <!-- FILTER & PAGINATION -->
-      <div class="flex flex-wrap gap-2 items-center mb-6">
-        <button class="f-btn active-filter px-3 py-1 text-xs" onclick="setFilter('sec',this)">Live</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('min',this)">Menit</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('hour',this)">Jam</button>
-        <button class="f-btn px-3 py-1 text-xs" onclick="setFilter('day',this)">Hari</button>
-
-        <select onchange="changeHistoryRange(this.value)"
-                class="ml-4 bg-[#111217] border border-[#26292e] text-xs px-2 py-1 rounded">
-          <option value="50">50 Data</option>
-          <option value="100">100 Data</option>
-          <option value="150">150 Data</option>
-          <option value="200">200 Data</option>
-        </select>
-
-        <div class="flex items-center gap-1 ml-auto text-xs text-slate-500">
-          <button onclick="prevPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Sebelumnya">◀</button>
-          <span id="page-info" class="px-2">1 / 1</span>
-          <button onclick="nextPage()" class="px-3 py-1 border rounded hover:bg-[#26292e]" title="Selanjutnya">▶</button>
-        </div>
-
-        <button onclick="clearHistory()" class="ml-2 bg-rose-600 hover:bg-rose-500 px-3 py-1 text-xs text-white rounded transition-all">
-          🗑️ Reset Histori
-        </button>
+      <div class="flex items-center gap-2 ml-auto text-sm">
+        <button onclick="prevPage()" class="p-2 rounded-lg hover:bg-slate-800" title="Sebelumnya">◀️</button>
+        <span id="page-info" class="px-4 py-2 bg-slate-800 rounded-lg min-w-[80px]">1 / 1</span>
+        <button onclick="nextPage()" class="p-2 rounded-lg hover:bg-slate-800" title="Selanjutnya">▶️</button>
       </div>
 
-      <!-- CHARTS -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-rose-500 mb-2">Suhu</p>
+      <button onclick="exportData()" class="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all ml-2">
+        📥 Export CSV
+      </button>
+      <button onclick="clearHistory()" class="bg-rose-600 hover:bg-rose-500 px-4 py-2 text-sm font-bold text-white rounded-lg transition-all">
+        🗑️ Reset Data
+      </button>
+    </div>
+
+    <!-- CHARTS ✅ ULTRA FIXED -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card">
+        <p class="text-sm font-bold text-rose-400 mb-3">📈 Suhu (°C) - Real Time</p>
+        <div class="chart-container">
           <canvas id="chartTemp"></canvas>
         </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-cyan-500 mb-2">Kelembapan</p>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-cyan-400 mb-3">💧 Kelembapan (%)</p>
+        <div class="chart-container">
           <canvas id="chartHum"></canvas>
         </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-emerald-500 mb-2">CO₂</p>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-emerald-400 mb-3">☁️ CO₂ (ppm)</p>
+        <div class="chart-container">
           <canvas id="chartCO2"></canvas>
         </div>
-        <div class="card p-4 h-[260px]">
-          <p class="text-xs text-amber-500 mb-2">Debu</p>
+      </div>
+      <div class="card">
+        <p class="text-sm font-bold text-amber-400 mb-3">🌫️ Debu PM2.5 (μg/m³)</p>
+        <div class="chart-container">
           <canvas id="chartDust"></canvas>
         </div>
       </div>
+    </div>
 
-      <!-- TABEL DATA DIPERBAIKI -->
-      <div class="overflow-x-auto">
-        <table class="w-full text-xs border border-[#26292e] rounded-lg overflow-hidden">
-          <thead class="bg-[#111217] sticky top-0 z-10">
-            <tr>
-              <th class="p-3 text-left font-bold text-slate-200 border-r border-[#26292e]">⏰ Waktu</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">🌡️ Suhu</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">💧 Hum</th>
-              <th class="p-3 text-center font-bold text-slate-200 border-r border-[#26292e]">☁️ CO₂</th>
-              <th class="p-3 text-center font-bold text-slate-200">🌫️ Debu</th>
-            </tr>
-          </thead>
-          <tbody id="table-body" class="divide-y divide-[#26292e]">
-            <!-- Data akan diisi JS -->
-          </tbody>
-        </table>
+    <!-- TABEL & STATS -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div class="card">
+        <p class="text-sm font-bold mb-4">📋 Data Terbaru</p>
+        <div class="overflow-x-auto max-h-96 overflow-y-auto">
+          <table class="w-full text-xs">
+            <thead class="sticky top-0 bg-slate-900/80 backdrop-blur-sm">
+              <tr>
+                <th class="p-3 text-left font-bold text-slate-200 w-24">Waktu</th>
+                <th class="p-3 text-center font-bold text-slate-200">🌡️</th>
+                <th class="p-3 text-center font-bold text-slate-200">💧</th>
+                <th class="p-3 text-center font-bold text-slate-200">☁️</th>
+                <th class="p-3 text-center font-bold text-slate-200">🌫️</th>
+              </tr>
+            </thead>
+            <tbody id="table-body"></tbody>
+          </table>
+        </div>
       </div>
-
-      <!-- INFO STATS -->
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 text-xs text-center p-4 bg-[#111217] rounded-lg">
-        <div><span class="font-bold text-emerald-400" id="total-data">--</span><br><span class="text-slate-500">Total Data</span></div>
-        <div><span class="font-bold text-amber-400" id="avg-co2">--</span><br><span class="text-slate-500">Rata² CO₂</span></div>
-        <div><span class="font-bold text-rose-400" id="max-temp">--</span><br><span class="text-slate-500">Suhu Tertinggi</span></div>
-        <div><span class="font-bold text-yellow-400" id="max-dust">--</span><br><span class="text-slate-500">Debu Tertinggi</span></div>
+      
+      <div class="card space-y-4">
+        <p class="text-sm font-bold text-slate-300">📊 Statistik</p>
+        <div class="grid grid-cols-2 gap-4 text-center">
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-emerald-400" id="total-data">0</div>
+            <div class="text-xs text-slate-500">Total Data</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-amber-400" id="avg-co2">--</div>
+            <div class="text-xs text-slate-500">Rata-rata CO₂</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-rose-400" id="max-temp">--</div>
+            <div class="text-xs text-slate-500">Suhu Max</div>
+          </div>
+          <div class="p-4 bg-slate-900/50 rounded-lg">
+            <div class="text-2xl font-black text-yellow-400" id="max-dust">--</div>
+            <div class="text-xs text-slate-500">Debu Max</div>
+          </div>
+        </div>
       </div>
-
     </div>
   </div>
+
 </div>
 
 <script>
-  // ================= FIREBASE =================
-  firebase.initializeApp({
+  // 🔥 FIREBASE v9 COMPAT MODE - STABLE
+  const firebaseConfig = {
     apiKey: "AIzaSyAD1QPvINjWitgo_Rrj44s47Pr4S1BU_lM",
-    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app"
-  });
+    authDomain: "monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    databaseURL: "https://monitoring-kualitas-udar-8ad9d-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "monitoring-kualitas-udar-8ad9d",
+    storageBucket: "monitoring-kualitas-udar-8ad9d.appspot.com",
+    messagingSenderId: "123456789",
+    appId: "1:123456789:web:abcdef123456"
+  };
+
+  firebase.initializeApp(firebaseConfig);
   const db = firebase.database();
 
-  // ================= DATA =================
-  let logData = JSON.parse(localStorage.getItem('iaq_logs')) || [];
-  let currentFilter='sec', historyLimit=50, pageOffset=0;
-  let totalPages = 1;
+  // DATA STORAGE
+  let logData = JSON.parse(localStorage.getItem('iaq_logs') || '[]');
+  let charts = {};
+  let currentFilter = 'sec', historyLimit = 50, pageOffset = 0;
 
-  // ================= CHART BUILDER =================
-  function buildChart(id,color,yLabel){
-    return new Chart(document.getElementById(id),{
-      type:'line',
-      data:{labels:[],datasets:[{data:[],borderColor:color,backgroundColor:color+'33',fill:true,tension:0.3}]},
-      options:{
-        responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-        scales:{
-          x:{ticks:{color:'#888',font:{size:10}},title:{display:true,text:'Waktu',color:'#aaa',font:{size:11,weight:'bold'}}},
-          y:{ticks:{color:'#888'},beginAtZero:true,title:{display:true,text:yLabel,color:'#aaa',font:{size:11,weight:'bold'}}}
-        }
+  // 🔥 CHART INITIALIZATION - BULLETPROOF
+  function initCharts() {
+    const chartConfig = {
+      type: 'line',
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { 
+            ticks: { color: '#9ca3af', maxTicksLimit: 6 },
+            grid: { color: '#374151' }
+          },
+          y: { 
+            ticks: { color: '#9ca3af' },
+            grid: { color: '#374151' },
+            beginAtZero: true
+          }
+        },
+        animation: { duration: 0 } // Fast updates
       }
+    };
+
+    charts.temp = new Chart(document.getElementById('chartTemp'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#ef4444', backgroundColor: '#ef444422', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
     });
+
+    charts.hum = new Chart(document.getElementById('chartHum'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#3b82f6', backgroundColor: '#3b82f622', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    charts.co2 = new Chart(document.getElementById('chartCO2'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#10b981', backgroundColor: '#10b98122', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    charts.dust = new Chart(document.getElementById('chartDust'), {
+      ...chartConfig,
+      data: { labels: [], datasets: [{ 
+        data: [], borderColor: '#f59e0b', backgroundColor: '#f59e0b22', 
+        tension: 0.3, borderWidth: 2, fill: true 
+      }] }
+    });
+
+    console.log('✅ Charts initialized:', Object.keys(charts));
   }
 
-  const chartTemp = buildChart('chartTemp','#f03e3e','Suhu (°C)');
-  const chartHum  = buildChart('chartHum','#339af0','Kelembapan (%)');
-  const chartCO2  = buildChart('chartCO2','#51cf66','CO₂ (ppm)');
-  const chartDust = buildChart('chartDust','#fcc419','Debu (µg/m³)');
+  // MAIN RENDER ENGINE
+  function renderAnalytics() {
+    const aggregated = aggregateData();
+    const pageSize = historyLimit;
+    const startIdx = Math.max(0, aggregated.length - pageOffset - pageSize);
+    const viewData = aggregated.slice(startIdx, startIdx + pageSize);
 
-  // ================= HELPERS =================
-  const avg = a => a.reduce((x,y)=>x+y)/a.length;
-
-  function getAggregated(){
-    const g={};
-    logData.slice(-1000).forEach(d=>{  // Limit processing
-      const t=new Date(d.t);
-      let k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
-      if(currentFilter==='min')k=t.toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'});
-      if(currentFilter==='hour')k=t.toLocaleString('id-ID',{hour:'2-digit'});
-      if(currentFilter==='day')k=t.toLocaleDateString('id-ID');
-      if(!g[k])g[k]={s:[],h:[],c:[],d:[],count:0};
-      g[k].s.push(d.s);g[k].h.push(d.h);g[k].c.push(d.c);g[k].d.push(d.d);g[k].count++;
-    });
-    return Object.entries(g).map(([k,v])=>({
-      time:k,
-      s:(avg(v.s)).toFixed(1),
-      h:(avg(v.h)).toFixed(1),
-      c:Math.round(avg(v.c)),
-      d:(avg(v.d)).toFixed(1),
-      count: v.count
-    })).sort((a,b)=>new Date(b.time)-new Date(a.time));
-  }
-
-  // ================= TABEL RENDER DENGAN STATUS =================
-  function renderTable(viewData) {
-    const tbody = document.getElementById('table-body');
+    // 🔥 UPDATE CHARTS - DIRECT DATA ASSIGNMENT
+    const labels = viewData.map((_, i) => `T-${i + 1}`);
     
-    if (viewData.length === 0) {
-      tbody.innerHTML = `
-        <tr class="h-24">
-          <td colspan="5" class="p-8 text-center text-slate-500 italic">
-            <div class="flex flex-col items-center gap-2">
-              <span class="text-3xl">📊</span>
-              <span>Tidak ada data untuk ditampilkan</span>
-            </div>
-          </td>
-        </tr>`;
-      return;
-    }
+    Object.entries(charts).forEach(([key, chart]) => {
+      const dataMap = { temp: 's', hum: 'h', co2: 'c', dust: 'd' };
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = viewData.map(row => parseFloat(row[dataMap[key]]) || 0);
+      chart.update('none'); // Fast no-animation update
+    });
 
-    tbody.innerHTML = viewData.map((row, idx) => {
-      const statusClass = row.status?.toLowerCase() || 'baik';
-      const statusColor = {
-        'baik': 'text-emerald-400',
-        'sedang': 'text-amber-400',
-        'buruk': 'text-rose-400'
-      }[statusClass] || 'text-slate-400';
-      
-      return `
-        <tr class="table-row transition-all hover:scale-[1.01] border-b border-[#26292e]/50 group">
-          <td class="p-3 font-mono text-slate-300 group-hover:text-white">${row.time}</td>
-          <td class="p-3 text-center text-rose-400 font-mono">${row.s}°C</td>
-          <td class="p-3 text-center text-cyan-400 font-mono">${row.h}%</td>
-          <td class="p-3 text-center text-emerald-400 font-mono">${row.c}ppm</td>
-          <td class="p-3 text-center">
-            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs bg-slate-800/50 ${statusClass === 'buruk' ? 'status-buruk' : statusClass === 'sedang' ? 'status-sedang' : 'status-baik'}">
-              <span class="${statusColor} font-bold">${row.status || '—'}</span>
-              <span class="text-slate-500">${row.d}μg</span>
-            </span>
-          </td>
-        </tr>`;
-    }).join('');
+    renderTable(viewData);
+    updateStats(aggregated);
+    updatePagination(aggregated.length);
   }
 
-  // ================= STATS =================
+  function aggregateData() {
+    const groups = {};
+    logData.slice(-500).forEach(entry => {
+      const date = new Date(entry.t);
+      let key = currentFilter === 'sec' ? 
+        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit', second: '2-digit'}) :
+        currentFilter === 'min' ? 
+        date.toLocaleTimeString('id', {hour: '2-digit', minute: '2-digit'}) :
+        currentFilter === 'hour' ? 
+        date.getHours() + ':00' :
+        date.toLocaleDateString('id');
+      
+      if (!groups[key]) groups[key] = { s: [], h: [], c: [], d: [], count: 0 };
+      groups[key].s.push(entry.s);
+      groups[key].h.push(entry.h);
+      groups[key].c.push(entry.c);
+      groups[key].d.push(entry.d);
+      groups[key].count++;
+    });
+
+    return Object.entries(groups).map(([time, values]) => ({
+      time,
+      s: (values.s.reduce((a, b) => a + b, 0) / values.s.length).toFixed(1),
+      h: (values.h.reduce((a, b) => a + b, 0) / values.h.length).toFixed(1),
+      c: Math.round(values.c.reduce((a, b) => a + b, 0) / values.c.length),
+      d: (values.d.reduce((a, b) => a + b, 0) / values.d.length).toFixed(0)
+    })).reverse(); // Newest first
+  }
+
+  function renderTable(data) {
+    document.getElementById('table-body').innerHTML = data.map(row => `
+      <tr class="table-row hover:bg-slate-800/50 transition-all border-b border-slate-800/50">
+        <td class="p-3 font-mono text-sm">${row.time}</td>
+        <td class="p-3 text-center text-rose-400 font-mono">${row.s}°C</td>
+        <td class="p-3 text-center text-cyan-400 font-mono">${row.h}%</td>
+        <td class="p-3 text-center text-emerald-400 font-mono">${row.c}ppm</td>
+        <td class="p-3 text-center text-amber-400 font-mono">${row.d}μg</td>
+      </tr>
+    `).join('') || '<tr><td colspan="5" class="p-8 text-center text-slate-500">Tidak ada data</td></tr>';
+  }
+
   function updateStats(data) {
-    document.getElementById('total-data').textContent = logData.length.toLocaleString();
-    if (data.length > 0) {
-      const allSuhu = data.flatMap(r => parseFloat(r.s));
-      const allCO2 = data.flatMap(r => parseFloat(r.c));
-      const allDust = data.flatMap(r => parseFloat(r.d));
+    document.getElementById('total-data').textContent = logData.length;
+    if (data.length) {
+      const flats = { s: [], h: [], c: [], d: [] };
+      data.forEach(row => {
+        flats.s.push(parseFloat(row.s));
+        flats.h.push(parseFloat(row.h));
+        flats.c.push(parseFloat(row.c));
+        flats.d.push(parseFloat(row.d));
+      });
       
-      document.getElementById('avg-co2').textContent = Math.round(avg(allCO2)) + 'ppm';
-      document.getElementById('max-temp').textContent = Math.max(...allSuhu).toFixed(1) + '°C';
-      document.getElementById('max-dust').textContent = Math.max(...allDust).toFixed(0) + 'μg';
+      document.getElementById('avg-co2').textContent = Math.round(
+        flats.c.reduce((a, b) => a + b, 0) / flats.c.length
+      );
+      document.getElementById('max-temp').textContent = Math.max(...flats.s).toFixed(1);
+      document.getElementById('max-dust').textContent = Math.max(...flats.d);
     }
   }
 
-  // ================= MAIN RENDER =================
-  function render(){
-    const data = getAggregated();
-    totalPages = Math.ceil(data.length / historyLimit);
-    const start = Math.max(0, data.length - (pageOffset + historyLimit));
-    const view = data.slice(start, data.length - pageOffset);
-    
-    // Charts
-    ['Temp','Hum','CO2','Dust'].forEach((chart,i)=>{
-      const charts = [chartTemp,chartHum,chartCO2,chartDust];
-      charts[i].data.labels = view.map(v=>v.time.slice(-8));
-      charts[i].data.datasets[0].data = view.map(v=>[v.s,v.h,v.c,v.d][i]);
-      charts[i].update('none');
-    });
-    
-    // Table + Stats
-    renderTable(view);
-    updateStats(data);
-    
-    // Pagination
-    document.getElementById('page-info').textContent = `${Math.floor(pageOffset/historyLimit)+1} / ${totalPages}`;
+  function updatePagination(total) {
+    const pages = Math.ceil(total / historyLimit);
+    document.getElementById('page-info').textContent = `${Math.floor(pageOffset / historyLimit) + 1} / ${pages}`;
   }
 
-  // ================= DESKRIPSI STATUS =================
-  function getStatusDescription(status, v){
-    const desc = {
-      'BURUK': '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95.',
-      'SEDANG': '⚠️ Udara SEDANG. Kelompok sensitif (anak/lansia) kurangi aktivitas luar ruangan.',
-      'BAIK': '✅ Kualitas udara BAIK. Aktivitas normal aman dilakukan.',
-      'NORMAL': '✅ Kondisi udara normal untuk aktivitas sehari-hari.'
-    }[status] || '⏳ Menunggu data sensor...';
-    return desc;
-  }
-
-  // ================= FIREBASE LIVE DATA =================
-  db.ref('log_sensor').limitToLast(1).on('child_added',s=>{
-    const v = s.val();
-    if(!v || v.suhu === undefined) return;
-
-    // Update dashboard
-    document.getElementById('dash-temp').textContent = parseFloat(v.suhu).toFixed(1) + ' °C';
-    document.getElementById('dash-hum').textContent = parseFloat(v.kelembapan).toFixed(1) + ' %';
-    document.getElementById('dash-co2').textContent = Math.round(v.co2) + ' ppm';
-    document.getElementById('dash-dust').textContent = parseFloat(v.debu).toFixed(0) + ' µg/m³';
-
-    const statusText = (v.status || 'NORMAL').toUpperCase();
-    document.getElementById('status').textContent = statusText;
-    document.getElementById('status').className = `text-3xl lg:text-4xl font-black mb-4 ${statusText === 'BAIK' ? 'text-emerald-400' : statusText === 'SEDANG' ? 'text-amber-400' : 'text-rose-400'}`;
-    document.getElementById('last-update').textContent = new Date().toLocaleString('id-ID');
-    document.getElementById('status-desc').textContent = getStatusDescription(statusText, v);
-
-    // Add to log
-    logData.push({
-      t: Date.now(),
-      s: parseFloat(v.suhu),
-      h: parseFloat(v.kelembapan),
-      c: parseFloat(v.co2),
-      d: parseFloat(v.debu),
-      status: statusText
-    });
-    
-    if(logData.length > 5000) logData.shift();
-    localStorage.setItem('iaq_logs', JSON.stringify(logData));
-    
-    render();
+  // 🔥 FIREBASE LISTENER - ROBUST
+  let isConnected = false;
+  db.ref('.info/connected').on('value', snap => {
+    isConnected = snap.val();
+    document.getElementById('connection').textContent = isConnected ? 'Online' : 'Offline';
+    document.getElementById('connection').parentElement.className = 
+      `px-3 py-1 bg-slate-800 rounded-full text-xs ${isConnected ? 'bg-emerald-600/80 text-emerald-200' : 'bg-rose-600/80 text-rose-200'}`;
   });
 
-  // ================= CONTROLS =================
-  function setFilter(f,e){
-    currentFilter = f;
-    document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active-filter'));
-    e.classList.add('active-filter');
+  db.ref('log_sensor').limitToLast(1).on('child_added', snapshot => {
+    const data = snapshot.val();
+    console.log('📡 New data:', data);
+    
+    if (data && typeof data.suhu === 'number') {
+      // Dashboard update
+      const temp = data.suhu.toFixed(1);
+      const hum = data.kelembapan?.toFixed(1) || '0';
+      const co2 = Math.round(data.co2 || 400);
+      const dust = Math.round(data.debu || 0);
+      
+      document.getElementById('dash-temp').textContent = temp + ' °C';
+      document.getElementById('temp-bar').style.width = Math.min((temp / 40) * 100, 100) + '%';
+      
+      document.getElementById('dash-hum').textContent = hum + ' %';
+      document.getElementById('hum-bar').style.width = Math.min((hum / 100) * 100, 100) + '%';
+      
+      document.getElementById('dash-co2').textContent = co2 + ' ppm';
+      document.getElementById('co2-bar').style.width = Math.min((co2 / 2000) * 100, 100) + '%';
+      
+      document.getElementById('dash-dust').textContent = dust + ' μg/m³';
+      document.getElementById('dust-bar').style.width = Math.min((dust / 500) * 100, 100) + '%';
+
+      // Status
+      const status = (data.status || 'BAIK').toUpperCase();
+      const statusEl = document.getElementById('status-main');
+      statusEl.textContent = status;
+      statusEl.className = `text-4xl font-black mb-4 ${
+        status === 'BAIK' ? 'text-emerald-400' : 
+        status === 'SEDANG' ? 'text-amber-400' : 'text-rose-400'
+      }`;
+      
+      document.getElementById('status-desc').innerHTML = getStatusDesc(status);
+      document.getElementById('last-update').textContent = 
+        `Diperbarui: ${new Date().toLocaleString('id-ID')}`;
+
+      // Log data
+      logData.push({
+        t: Date.now(),
+        s: data.suhu,
+        h: data.kelembapan || 0,
+        c: data.co2 || 400,
+        d: data.debu || 0,
+        status
+      });
+      
+      if (logData.length > 2000) logData = logData.slice(-2000);
+      localStorage.setItem('iaq_logs', JSON.stringify(logData));
+      
+      document.getElementById('data-count').textContent = logData.length;
+      
+      if (!document.getElementById('section-recap').classList.contains('hidden')) {
+        renderAnalytics();
+      }
+    }
+  });
+
+  function getStatusDesc(status) {
+    const desc = {
+      'BAIK': '✅ <strong>Kualitas udara BAIK</strong><br>✅ Aktivitas normal aman dilakukan tanpa batasan',
+      'SEDANG': '⚠️ <strong>Udara SEDANG</strong><br>👶 Anak-anak dan lansia batasi aktivitas luar ruangan',
+      'BURUK': '🚨 <strong>Udara BURUK</strong><br>❌ Batasi semua aktivitas luar ruang, gunakan masker N95',
+      'NORMAL': '✅ <strong>Normal</strong><br>Semua aktivitas aman dilakukan'
+    };
+    return desc[status] || '⏳ Menunggu data...';
+  }
+
+  // CONTROLS
+  function setFilter(filter, btn) {
+    currentFilter = filter;
+    document.querySelectorAll('.f-btn').forEach(b => b.classList.remove('active-filter'));
+    btn.classList.add('active-filter');
     pageOffset = 0;
-    render();
+    renderAnalytics();
   }
 
-  function changeHistoryRange(v){
-    historyLimit = +v;
+  function changeHistoryRange(limit) {
+    historyLimit = +limit;
     pageOffset = 0;
-    render();
+    renderAnalytics();
   }
 
-  function prevPage(){
-    if(pageOffset >= historyLimit) pageOffset -= historyLimit;
-    render();
+  function prevPage() { if (pageOffset > 0) { pageOffset -= historyLimit; renderAnalytics(); } }
+  function nextPage() { 
+    const data = aggregateData();
+    if (pageOffset + historyLimit < data.length) { pageOffset += historyLimit; renderAnalytics(); }
   }
 
-  function nextPage(){
-    if(pageOffset + historyLimit < logData.length) pageOffset += historyLimit;
-    render();
+  function exportData() {
+    const csv = ['Waktu,Suhu,Hum,CO2,Debu\n'].concat(
+      logData.slice(-100).map(d => 
+        `${new Date(d.t).toLocaleString()},${d.s},${d.h},${d.c},${d.d}`
+      )
+    ).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `iaq-data-${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
   }
 
-  function clearHistory(){
-    if(confirm('🗑️ Hapus semua histori data? (Grafik & tabel akan kosong)')){
+  function clearHistory() {
+    if (confirm('Hapus semua data?')) {
       logData = [];
       localStorage.removeItem('iaq_logs');
-      pageOffset = 0;
-      render();
+      renderAnalytics();
     }
   }
 
-  function showSection(s){
-    document.getElementById('section-dashboard').classList.toggle('hidden', s !== 'dashboard');
-    document.getElementById('section-recap').classList.toggle('hidden', s !== 'recap');
-    if(s === 'recap') render();  // Auto refresh table
+  function showSection(section) {
+    document.querySelectorAll('[id^="section-"]').forEach(s => s.classList.add('hidden'));
+    document.getElementById(`section-${section}`).classList.remove('hidden');
+    
+    document.querySelectorAll('[id^="btn-"]').forEach(b => b.classList.remove('nav-active'));
+    document.getElementById(`btn-${section}`).classList.add('nav-active');
+    
+    if (section === 'recap') renderAnalytics();
   }
 
-  // Initial render
-  render();
+  // INIT
+  window.addEventListener('load', () => {
+    initCharts();
+    renderAnalytics();
+    console.log('🚀 Dashboard ready! Data count:', logData.length);
+  });
+
+  // Auto refresh analytics
+  setInterval(() => {
+    if (!document.getElementById('section-recap').classList.contains('hidden')) {
+      renderAnalytics();
+    }
+  }, 3000);
 </script>
 </body>
 </html>
