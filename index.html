@@ -224,13 +224,7 @@
   function getStatusDescription(status, v){
     status = (status || '').toUpperCase();
     if(status === 'BURUK'){
-      return '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95 jika keluar, dan aktifkan purifier udara.';
-    }
-    if(status === 'TIDAK SEHAT' || status === 'UNHEALTHY'){
-      return '⚠️ Udara TIDAK SEHAT bagi kelompok sensitif (anak, lansia, asma). Kurangi aktivitas berat luar ruang dan gunakan pelindung pernapasan.';
-    }
-    if(status === 'SEDANG' || status === 'MODERATE'){
-      return '✅ Kualitas udara SEDANG. Aktivitas luar ruang diperbolehkan, tapi kelompok sensitif kurangi paparan lama.';
+      return '⚠️ Kualitas udara BURUK. Batasi aktivitas luar ruang, tutup jendela, gunakan masker N95 jika keluar, dan aktifkan purifier udara.';  
     }
     if(status === 'BAIK'){
       return '✅ Kualitas udara BAIK. Semua aktivitas dalam/luar ruangan aman dilakukan secara normal.';
